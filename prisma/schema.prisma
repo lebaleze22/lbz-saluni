@@ -1,0 +1,209 @@
+// Schema Prisma — Étape 1 (Registre d'activité)
+// Voir docs/steps/Etape_01_Registre_Activite.md pour la spécification fonctionnelle
+// et docs/architecture/ pour les décisions structurantes (tenant_id, RLS, montants XAF...).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Tenants — un salon = un tenant. Multi-tenant routing hors scope de l'Étape 1,
+// mais tenant_id est posé dès la première table (cf. docs/architecture/001-*.md).
+// ---------------------------------------------------------------------------
+model Tenant {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users               User[]
+  staff               Staff[]
+  clients             Client[]
+  services            Service[]
+  appointments        Appointment[]
+  appointmentServices AppointmentService[]
+  payments            Payment[]
+
+  @@map("tenants")
+}
+
+enum UserRole {
+  salon_admin
+  manager
+  staff
+
+  @@map("user_role")
+}
+
+// ---------------------------------------------------------------------------
+// Users — comptes applicatifs, un-à-un avec auth.users (Supabase Auth).
+// Pour l'Étape 1, seul salon_admin saisit des données ; manager/staff
+// sont réservés pour une évolution future (cf. Etape_01_Registre_Activite.md).
+// ---------------------------------------------------------------------------
+model User {
+  id        String   @id @db.Uuid // = auth.users.id (Supabase)
+  tenantId  String   @map("tenant_id") @db.Uuid
+  email     String   @unique
+  fullName  String   @map("full_name")
+  role      UserRole @default(salon_admin)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  appointments Appointment[] @relation("AppointmentCreatedBy")
+
+  @@index([tenantId])
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Staff — membres de l'équipe réalisant les prestations. Pas de compte,
+// pas de login : simple référence sélectionnable dans le formulaire de saisie.
+// ---------------------------------------------------------------------------
+model Staff {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  name           String
+  commissionRate Decimal? @map("commission_rate") @db.Decimal(5, 2) // % réservé pour calcul futur des commissions
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+
+  @@index([tenantId])
+  @@map("staff")
+}
+
+// ---------------------------------------------------------------------------
+// Clients — saisie à la volée, dédoublonnage best-effort par nom (cf. spec).
+// ---------------------------------------------------------------------------
+model Client {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  name      String
+  phone     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+
+  @@index([tenantId])
+  @@index([tenantId, name])
+  @@map("clients")
+}
+
+// ---------------------------------------------------------------------------
+// Services — catalogue de prestations du salon, prix de référence.
+// Le prix effectif d'une visite est capturé ligne par ligne dans
+// AppointmentService (cf. spec : "chacun avec son propre prix").
+// ---------------------------------------------------------------------------
+model Service {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  name         String
+  defaultPrice Int      @map("default_price") // FCFA, entier — voir docs/architecture/002-montants-xaf.md
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  appointmentServices AppointmentService[]
+
+  @@index([tenantId])
+  @@map("services")
+}
+
+enum AppointmentSource {
+  reservation
+  walk_in
+
+  @@map("appointment_source")
+}
+
+// ---------------------------------------------------------------------------
+// Appointments — une visite = un enregistrement du registre.
+// ---------------------------------------------------------------------------
+model Appointment {
+  id          String            @id @default(uuid()) @db.Uuid
+  tenantId    String            @map("tenant_id") @db.Uuid
+  clientId    String            @map("client_id") @db.Uuid
+  staffId     String            @map("staff_id") @db.Uuid
+  createdById String            @map("created_by") @db.Uuid
+  source      AppointmentSource
+  startTime   DateTime          @map("start_time")
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+
+  tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client              Client               @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  staff               Staff                @relation(fields: [staffId], references: [id], onDelete: Restrict)
+  createdBy           User                 @relation("AppointmentCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  appointmentServices AppointmentService[]
+  payments            Payment[]
+
+  @@index([tenantId])
+  @@index([tenantId, startTime])
+  @@index([tenantId, staffId])
+  @@map("appointments")
+}
+
+// ---------------------------------------------------------------------------
+// AppointmentServices — lignes de prestation d'une visite, prix indépendant
+// par ligne (permet les rapports par type de prestation).
+// tenant_id dénormalisé ici pour des policies RLS directes, sans jointure
+// (cf. docs/architecture/001-tenant-id-rls.md).
+// ---------------------------------------------------------------------------
+model AppointmentService {
+  id            String @id @default(uuid()) @db.Uuid
+  tenantId      String @map("tenant_id") @db.Uuid
+  appointmentId String @map("appointment_id") @db.Uuid
+  serviceId     String @map("service_id") @db.Uuid
+  price         Int // FCFA, entier — prix de cette ligne au moment de la visite
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  service     Service     @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([appointmentId])
+  @@map("appointment_services")
+}
+
+enum PaymentMethod {
+  cash
+  orange_money
+  mtn_momo
+
+  @@map("payment_method")
+}
+
+// ---------------------------------------------------------------------------
+// Payments — règlement d'une visite. Montant total = somme des lignes de
+// service (cf. spec). Pas de paiement en ligne à cette étape : Mobile Money
+// est ici une méthode déclarative saisie manuellement, pas une intégration
+// d'agrégateur (cf. docs/architecture/003-mobile-money.md).
+// ---------------------------------------------------------------------------
+model Payment {
+  id            String        @id @default(uuid()) @db.Uuid
+  tenantId      String        @map("tenant_id") @db.Uuid
+  appointmentId String        @map("appointment_id") @db.Uuid
+  amount        Int // FCFA, entier
+  method        PaymentMethod
+  createdAt     DateTime      @default(now()) @map("created_at")
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([appointmentId])
+  @@map("payments")
+}
