@@ -17,10 +17,13 @@ datasource db {
 // mais tenant_id est posé dès la première table (cf. docs/architecture/001-*.md).
 // ---------------------------------------------------------------------------
 model Tenant {
-  id        String   @id @default(uuid()) @db.Uuid
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name      String
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  active    Boolean   @default(true)
+  isDeleted Boolean   @default(false) @map("is_deleted")
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at")
 
   users               User[]
   staff               Staff[]
@@ -47,13 +50,16 @@ enum UserRole {
 // sont réservés pour une évolution future (cf. Etape_01_Registre_Activite.md).
 // ---------------------------------------------------------------------------
 model User {
-  id        String   @id @db.Uuid // = auth.users.id (Supabase)
-  tenantId  String   @map("tenant_id") @db.Uuid
-  email     String   @unique
-  fullName  String   @map("full_name")
-  role      UserRole @default(salon_admin)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // = auth.users.id (Supabase)
+  tenantId  String    @map("tenant_id") @db.Uuid
+  email     String    @unique
+  fullName  String    @map("full_name")
+  role      UserRole  @default(salon_admin)
+  active    Boolean   @default(true)
+  isDeleted Boolean   @default(false) @map("is_deleted")
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at")
 
   tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   appointments Appointment[] @relation("AppointmentCreatedBy")
@@ -67,13 +73,15 @@ model User {
 // pas de login : simple référence sélectionnable dans le formulaire de saisie.
 // ---------------------------------------------------------------------------
 model Staff {
-  id             String   @id @default(uuid()) @db.Uuid
-  tenantId       String   @map("tenant_id") @db.Uuid
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
   name           String
-  commissionRate Decimal? @map("commission_rate") @db.Decimal(5, 2) // % réservé pour calcul futur des commissions
-  active         Boolean  @default(true)
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  commissionRate Decimal?  @map("commission_rate") @db.Decimal(5, 2) // % réservé pour calcul futur des commissions
+  active         Boolean   @default(true)
+  isDeleted      Boolean   @default(false) @map("is_deleted")
+  deletedAt      DateTime? @map("deleted_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at")
 
   tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   appointments Appointment[]
@@ -86,12 +94,15 @@ model Staff {
 // Clients — saisie à la volée, dédoublonnage best-effort par nom (cf. spec).
 // ---------------------------------------------------------------------------
 model Client {
-  id        String   @id @default(uuid()) @db.Uuid
-  tenantId  String   @map("tenant_id") @db.Uuid
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String    @map("tenant_id") @db.Uuid
   name      String
   phone     String?
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  active    Boolean   @default(true)
+  isDeleted Boolean   @default(false) @map("is_deleted")
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at")
 
   tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   appointments Appointment[]
@@ -107,13 +118,15 @@ model Client {
 // AppointmentService (cf. spec : "chacun avec son propre prix").
 // ---------------------------------------------------------------------------
 model Service {
-  id           String   @id @default(uuid()) @db.Uuid
-  tenantId     String   @map("tenant_id") @db.Uuid
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
   name         String
-  defaultPrice Int      @map("default_price") // FCFA, entier — voir docs/architecture/002-montants-xaf.md
-  active       Boolean  @default(true)
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  defaultPrice Int       @map("default_price") // FCFA, entier — voir docs/architecture/002-montants-xaf.md
+  active       Boolean   @default(true)
+  isDeleted    Boolean   @default(false) @map("is_deleted")
+  deletedAt    DateTime? @map("deleted_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
 
   tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   appointmentServices AppointmentService[]
@@ -133,15 +146,18 @@ enum AppointmentSource {
 // Appointments — une visite = un enregistrement du registre.
 // ---------------------------------------------------------------------------
 model Appointment {
-  id          String            @id @default(uuid()) @db.Uuid
+  id          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId    String            @map("tenant_id") @db.Uuid
   clientId    String            @map("client_id") @db.Uuid
   staffId     String            @map("staff_id") @db.Uuid
   createdById String            @map("created_by") @db.Uuid
   source      AppointmentSource
   startTime   DateTime          @map("start_time")
+  active      Boolean           @default(true)
+  isDeleted   Boolean           @default(false) @map("is_deleted")
+  deletedAt   DateTime?         @map("deleted_at")
   createdAt   DateTime          @default(now()) @map("created_at")
-  updatedAt   DateTime          @updatedAt @map("updated_at")
+  updatedAt   DateTime          @default(now()) @updatedAt @map("updated_at")
 
   tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   client              Client               @relation(fields: [clientId], references: [id], onDelete: Restrict)
@@ -163,11 +179,14 @@ model Appointment {
 // (cf. docs/architecture/001-tenant-id-rls.md).
 // ---------------------------------------------------------------------------
 model AppointmentService {
-  id            String @id @default(uuid()) @db.Uuid
-  tenantId      String @map("tenant_id") @db.Uuid
-  appointmentId String @map("appointment_id") @db.Uuid
-  serviceId     String @map("service_id") @db.Uuid
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  appointmentId String    @map("appointment_id") @db.Uuid
+  serviceId     String    @map("service_id") @db.Uuid
   price         Int // FCFA, entier — prix de cette ligne au moment de la visite
+  active        Boolean   @default(true)
+  isDeleted     Boolean   @default(false) @map("is_deleted")
+  deletedAt     DateTime? @map("deleted_at")
 
   tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
@@ -193,11 +212,14 @@ enum PaymentMethod {
 // d'agrégateur (cf. docs/architecture/003-mobile-money.md).
 // ---------------------------------------------------------------------------
 model Payment {
-  id            String        @id @default(uuid()) @db.Uuid
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId      String        @map("tenant_id") @db.Uuid
   appointmentId String        @map("appointment_id") @db.Uuid
   amount        Int // FCFA, entier
   method        PaymentMethod
+  active        Boolean       @default(true)
+  isDeleted     Boolean       @default(false) @map("is_deleted")
+  deletedAt     DateTime?     @map("deleted_at")
   createdAt     DateTime      @default(now()) @map("created_at")
 
   tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
