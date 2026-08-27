@@ -15,7 +15,7 @@ export default function AdminError({
   }, [error]);
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-20 text-center">
+    <main className="w-full px-4 py-20 text-center sm:px-6 lg:px-8">
       <div className="rounded-2xl border border-red-200 bg-red-50 p-8">
         <CircleAlert className="mx-auto size-9 text-red-700" />
         <h1 className="mt-4 text-xl font-black text-red-950">Une erreur technique est survenue</h1>

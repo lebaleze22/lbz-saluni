@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { prisma } from "@/lib/prisma";
+import { adminPrisma } from "@/lib/admin-prisma";
 
 export class AccessDeniedError extends Error {
   constructor(message = "Vous devez être connecté comme gérant du salon.") {
@@ -19,7 +19,10 @@ export async function requireSalonAdmin() {
     throw new AccessDeniedError();
   }
 
-  const user = await prisma.user.findUnique({
+  // adminPrisma (rôle privilégié, contourne RLS) : lire sa propre ligne users pour
+  // résoudre tenantId/role est justement ce qui manque pour positionner une session RLS
+  // (app.tenant_id) — problème d'amorçage, cf. docs/architecture/014-decouplage-rls-auth-provider.md.
+  const user = await adminPrisma.user.findUnique({
     where: { id: authUser.id },
     select: { id: true, tenantId: true, fullName: true, role: true },
   });

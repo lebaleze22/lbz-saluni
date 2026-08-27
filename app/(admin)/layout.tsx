@@ -1,11 +1,21 @@
 import Link from "next/link";
 import { BarChart3, BookOpen, Scissors } from "lucide-react";
+import { redirect } from "next/navigation";
+import { AccessDeniedError, requireSalonAdmin } from "@/lib/db/auth";
+import { LogoutButton } from "@/app/(admin)/logout-button";
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  try {
+    await requireSalonAdmin();
+  } catch (error) {
+    if (error instanceof AccessDeniedError) redirect("/login");
+    throw error;
+  }
+
   return (
     <div className="min-h-screen bg-stone-50 text-stone-950">
       <header className="border-b border-stone-200 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+        <div className="flex w-full items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
           <Link href="/register" className="flex items-center gap-3">
             <span className="grid size-10 place-items-center rounded-xl bg-emerald-950 text-white">
               <Scissors className="size-5" aria-hidden="true" />
@@ -33,6 +43,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <BarChart3 className="size-4" aria-hidden="true" />
               <span className="hidden sm:inline">Rapports</span>
             </Link>
+            <LogoutButton />
           </nav>
         </div>
       </header>

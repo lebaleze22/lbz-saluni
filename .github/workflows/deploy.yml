@@ -1,0 +1,144 @@
+# CI/CD — core-api.
+#
+# 1. build-and-push : construit l'image Docker de core-api (voir Dockerfile) et la
+#    pousse sur GitHub Container Registry (GHCR). Ne nécessite aucun secret manuel :
+#    l'authentification GHCR utilise le GITHUB_TOKEN fourni automatiquement par Actions.
+# 2. deploy : se connecte en SSH au VPS et lance `docker compose pull && up -d`.
+#    Nécessite des secrets VPS qui n'existent PAS ENCORE côté GitHub au moment où ce
+#    workflow est écrit (voir "Secrets requis" ci-dessous) — ce job est donc conditionné
+#    à leur présence pour que le pipeline continue de fonctionner (build + push) sans
+#    échouer tant qu'ils n'ont pas été créés. Une fois les secrets ajoutés dans
+#    Settings > Secrets and variables > Actions du repo, le déploiement s'active
+#    automatiquement, sans autre changement à ce fichier.
+#
+# --- Secrets requis (Settings > Secrets and variables > Actions) --------------------
+#
+#   Déploiement VPS (n'existent pas encore, à créer avant le premier déploiement réel) :
+#     VPS_HOST        — IP ou nom d'hôte du VPS (ex. 203.0.113.10)
+#     VPS_USER         — utilisateur SSH de déploiement (ex. deploy)
+#     VPS_SSH_KEY       — clé privée SSH correspondante (format PEM), dédiée au déploiement,
+#                          jamais la clé personnelle d'un développeur
+#     VPS_SSH_PORT      — optionnel, port SSH si différent de 22
+#     VPS_APP_DIR        — chemin absolu, sur le VPS, du dossier contenant
+#                          docker-compose.yml + .env (ex. /opt/lbz)
+#
+#   Build de l'image (valeurs publiques Supabase, inlinées côté client — voir
+#   Dockerfile ; à créer aussi comme secrets de repo, mais leur absence ne bloque QUE la
+#   génération d'un bundle client correctement configuré, jamais le pipeline lui-même) :
+#     NEXT_PUBLIC_SUPABASE_URL
+#     NEXT_PUBLIC_SUPABASE_ANON_KEY
+#
+# Aucun secret de base de données (DATABASE_URL, SUPABASE_SERVICE_ROLE_KEY) ne transite
+# par ce workflow ni par l'image : ils vivent uniquement dans le `.env` du VPS, lu au
+# runtime par `env_file` (voir docker-compose.yml et
+# docs/architecture/010-supabase-managed-hors-docker-compose.md).
+# --------------------------------------------------------------------------------------
+
+name: Deploy core-api
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/core-api
+
+jobs:
+  # Job-level `if:` ne peut pas référencer le contexte `secrets` directement (limitation
+  # documentée de GitHub Actions) — on calcule donc ici, via une variable d'environnement
+  # intermédiaire, un output de job (donnée normale, utilisable en `if:`) qui reflète si
+  # les secrets VPS existent, sans jamais faire fuiter leur valeur.
+  check-vps-secrets:
+    name: Check VPS secrets
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - name: Check secrets presence
+        id: check
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          if [ -n "$VPS_HOST" ] && [ -n "$VPS_SSH_KEY" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::VPS_HOST / VPS_SSH_KEY absents — le job deploy sera ignoré. Voir l'en-tête de ce fichier pour la liste des secrets attendus."
+          fi
+
+  build-and-push:
+    name: Build & push image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.meta.outputs.tags }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,format=long
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+            NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+  deploy:
+    name: Deploy to VPS
+    needs: [check-vps-secrets, build-and-push]
+    runs-on: ubuntu-latest
+    # Ne s'exécute que si les secrets VPS ont été créés — voir l'en-tête de ce fichier.
+    # Tant qu'ils n'existent pas, ce job est ignoré (pas d'échec) et seul le build/push
+    # tourne : l'image est prête sur GHCR, prête à être déployée manuellement ou dès que
+    # les secrets sont ajoutés.
+    if: needs.check-vps-secrets.outputs.ready == 'true'
+    steps:
+      - name: Pull & restart on VPS
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          GHCR_ACTOR: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APP_DIR: ${{ secrets.VPS_APP_DIR }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT || 22 }}
+          envs: GHCR_ACTOR,GHCR_TOKEN,APP_DIR
+          script: |
+            set -euo pipefail
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_ACTOR" --password-stdin
+            cd "$APP_DIR"
+            docker compose pull core-api
+            docker compose up -d --remove-orphans
+            docker image prune -f

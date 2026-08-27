@@ -27,6 +27,7 @@ model Tenant {
 
   users               User[]
   staff               Staff[]
+  jobTitles           JobTitle[]
   clients             Client[]
   services            Service[]
   appointments        Appointment[]
@@ -37,6 +38,7 @@ model Tenant {
 }
 
 enum UserRole {
+  owner
   salon_admin
   manager
   staff
@@ -48,6 +50,9 @@ enum UserRole {
 // Users — comptes applicatifs, un-à-un avec auth.users (Supabase Auth).
 // Pour l'Étape 1, seul salon_admin saisit des données ; manager/staff
 // sont réservés pour une évolution future (cf. Etape_01_Registre_Activite.md).
+// `owner` (cf. docs/architecture/012-role-owner.md) est un rôle de supervision
+// globale au-dessus de salon_admin ("Director"), pas un rôle opérationnel — au
+// plus un par tenant, provisionné par script comme le compte Director actuel.
 // ---------------------------------------------------------------------------
 model User {
   id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // = auth.users.id (Supabase)
@@ -63,30 +68,76 @@ model User {
 
   tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   appointments Appointment[] @relation("AppointmentCreatedBy")
+  staffProfile Staff?
 
   @@index([tenantId])
+  @@unique([tenantId, id]) // cible de la FK composite staff(tenant_id, user_id) — cf. docs/architecture/013-job-title-vs-system-role.md
   @@map("users")
 }
 
+enum StaffSystemRole {
+  none
+  director
+  manager
+
+  @@map("staff_system_role")
+}
+
 // ---------------------------------------------------------------------------
-// Staff — membres de l'équipe réalisant les prestations. Pas de compte,
-// pas de login : simple référence sélectionnable dans le formulaire de saisie.
+// JobTitle — intitulés de poste, propres à chaque salon (texte libre, pas un enum
+// global). Gérée par l'Owner du tenant. Purement un libellé métier/affichage :
+// n'accorde AUCUNE permission — voir Staff.systemRole ci-dessous et
+// docs/architecture/013-job-title-vs-system-role.md pour la séparation délibérée.
+// ---------------------------------------------------------------------------
+model JobTitle {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String    @map("tenant_id") @db.Uuid
+  name      String
+  active    Boolean   @default(true)
+  isDeleted Boolean   @default(false) @map("is_deleted")
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  staff  Staff[]
+
+  @@unique([tenantId, id]) // cible de la FK composite staff(tenant_id, job_title_id)
+  @@index([tenantId])
+  @@map("job_titles")
+}
+
+// ---------------------------------------------------------------------------
+// Staff — membres de l'équipe réalisant les prestations. `jobTitleId` est un
+// libellé optionnel choisi dans la liste du tenant, sans effet sur les permissions.
+// `systemRole` (enum fermé, contrôlé en code) est ce qui détermine l'éligibilité à
+// un compte de connexion : `userId` ne doit être renseigné que si systemRole != none
+// (contrainte CHECK en base, non modélisable par Prisma — voir la migration RLS
+// dédiée et docs/architecture/013-job-title-vs-system-role.md).
 // ---------------------------------------------------------------------------
 model Staff {
-  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId       String    @map("tenant_id") @db.Uuid
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String          @map("tenant_id") @db.Uuid
   name           String
-  commissionRate Decimal?  @map("commission_rate") @db.Decimal(5, 2) // % réservé pour calcul futur des commissions
-  active         Boolean   @default(true)
-  isDeleted      Boolean   @default(false) @map("is_deleted")
-  deletedAt      DateTime? @map("deleted_at")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at")
+  jobTitleId     String?         @map("job_title_id") @db.Uuid
+  systemRole     StaffSystemRole @default(none) @map("system_role")
+  userId         String?         @unique @map("user_id") @db.Uuid
+  commissionRate Decimal?        @map("commission_rate") @db.Decimal(5, 2) // % réservé pour calcul futur des commissions
+  active         Boolean         @default(true)
+  isDeleted      Boolean         @default(false) @map("is_deleted")
+  deletedAt      DateTime?       @map("deleted_at")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @default(now()) @updatedAt @map("updated_at")
 
   tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  jobTitle     JobTitle?     @relation(fields: [tenantId, jobTitleId], references: [tenantId, id], onDelete: Restrict)
+  user         User?         @relation(fields: [tenantId, userId], references: [tenantId, id], onDelete: Restrict)
   appointments Appointment[]
 
+  @@unique([tenantId, userId]) // requis par Prisma pour la relation 1-1 composite vers User ; userId seul est déjà @unique
   @@index([tenantId])
+  @@index([tenantId, jobTitleId])
+  @@index([tenantId, systemRole])
   @@map("staff")
 }
 

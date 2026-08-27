@@ -1,7 +1,7 @@
 import { getReportDateRange } from "@/lib/dates";
-import { prisma } from "@/lib/prisma";
 import { aggregateReportRows } from "@/lib/reports/aggregate";
 import { requireSalonAdmin } from "@/lib/db/auth";
+import { runInTenantTransaction } from "@/lib/db/rls-session";
 import type { ReportData, ReportPeriod, ReportRow } from "@/types/reports";
 
 export async function getReportData(
@@ -11,38 +11,42 @@ export async function getReportData(
   const user = await requireSalonAdmin();
   const range = getReportDateRange(period, referenceDate);
 
-  const appointments = await prisma.appointment.findMany({
-    where: {
-      tenantId: user.tenantId,
-      startTime: { gte: range.start, lt: range.end },
-    },
-    orderBy: { startTime: "asc" },
-    select: {
-      id: true,
-      startTime: true,
-      source: true,
-      client: {
+  const appointments = await runInTenantTransaction(
+    { userId: user.id, tenantId: user.tenantId, role: user.role },
+    (tx) =>
+      tx.appointment.findMany({
+        where: {
+          tenantId: user.tenantId,
+          startTime: { gte: range.start, lt: range.end },
+        },
+        orderBy: { startTime: "asc" },
         select: {
           id: true,
-          name: true,
-          appointments: {
-            where: { tenantId: user.tenantId },
-            orderBy: { startTime: "asc" },
-            take: 1,
-            select: { startTime: true },
+          startTime: true,
+          source: true,
+          client: {
+            select: {
+              id: true,
+              name: true,
+              appointments: {
+                where: { tenantId: user.tenantId },
+                orderBy: { startTime: "asc" },
+                take: 1,
+                select: { startTime: true },
+              },
+            },
           },
+          staff: { select: { id: true, name: true } },
+          appointmentServices: {
+            select: {
+              price: true,
+              service: { select: { id: true, name: true } },
+            },
+          },
+          payments: { select: { amount: true, method: true } },
         },
-      },
-      staff: { select: { id: true, name: true } },
-      appointmentServices: {
-        select: {
-          price: true,
-          service: { select: { id: true, name: true } },
-        },
-      },
-      payments: { select: { amount: true, method: true } },
-    },
-  });
+      }),
+  );
 
   const rows: ReportRow[] = appointments.map((appointment) => ({
     appointmentId: appointment.id,

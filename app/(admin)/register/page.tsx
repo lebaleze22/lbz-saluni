@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 
 function AccessMessage({ message }: { message: string }) {
   return (
-    <main className="mx-auto max-w-2xl px-4 py-20 text-center">
+    <main className="w-full px-4 py-20 text-center sm:px-6 lg:px-8">
       <div className="rounded-2xl border border-amber-200 bg-amber-50 p-8">
         <h1 className="text-xl font-black text-amber-950">Accès au registre indisponible</h1>
         <p className="mt-2 text-sm text-amber-800">{message}</p>
@@ -50,7 +50,7 @@ export default async function RegisterPage({
   const dayTotal = data.entries.reduce((sum, entry) => sum + (entry.payment?.amount ?? 0), 0);
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <main className="w-full px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
         <div>
           <p className="text-sm font-bold uppercase tracking-[0.14em] text-emerald-800">

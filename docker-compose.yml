@@ -1,0 +1,77 @@
+# Assemblage local ET VPS pour LBZ.
+#
+# - `docker compose up --build` en local : construit core-api depuis le Dockerfile et
+#   démarre core-api + nginx.
+# - Sur le VPS (CI/CD, voir .github/workflows/deploy.yml) : `docker compose pull` récupère
+#   l'image déjà construite sur GHCR (le champ `image:` ci-dessous), puis `docker compose
+#   up -d` démarre sans rebuild local.
+#
+# Réseau "lbz-internal" nommé explicitement (pas le réseau par défaut généré par
+# Compose à partir du nom du projet) : whatsapp-agent (Étape 6) le rejoindra plus tard
+# en s'y déclarant, sans que ce fichier ait besoin d'être restructuré. Seul nginx publie
+# un port sur l'hôte ; core-api (et, plus tard, whatsapp-agent) ne sont joignables que
+# depuis ce réseau interne, jamais directement depuis l'extérieur — voir
+# docs/architecture/011-auth-inter-services.md.
+#
+# Variables d'environnement : lues depuis un fichier `.env` à la racine (non versionné,
+# cf. .env.example) — les NEXT_PUBLIC_* servent aussi de build args (inlinés au build,
+# voir Dockerfile), les autres (DATABASE_URL, DIRECT_URL, SUPABASE_SERVICE_ROLE_KEY)
+# ne sont injectées qu'au runtime du conteneur, jamais dans l'image.
+
+services:
+  core-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+    image: ghcr.io/${GHCR_OWNER:-lbz}/lbz-saluni-core-api:latest
+    container_name: lbz-core-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    expose:
+      - "3000"
+    networks:
+      - lbz-internal
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:3000/', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: lbz-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      core-api:
+        condition: service_healthy
+    networks:
+      - lbz-internal
+
+  # --- Étape 6 : whatsapp-agent (pas encore créé) ---------------------------------
+  # whatsapp-agent:
+  #   build:
+  #     context: ../whatsapp-agent
+  #   image: ghcr.io/${GHCR_OWNER:-lbz}/lbz-whatsapp-agent:latest
+  #   container_name: lbz-whatsapp-agent
+  #   restart: unless-stopped
+  #   env_file:
+  #     - .env.whatsapp-agent
+  #   expose:
+  #     - "3001"
+  #   networks:
+  #     - lbz-internal
+  # ---------------------------------------------------------------------------------
+
+networks:
+  lbz-internal:
+    name: lbz-internal
+    driver: bridge

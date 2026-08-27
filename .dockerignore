@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+.husky
+.claude
+docs
+tests
+*.md
+.env
+.env*.local
+.vercel
+npm-debug.log*
+*.tsbuildinfo
+coverage
