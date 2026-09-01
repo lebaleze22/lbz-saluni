@@ -42,7 +42,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { withRlsSession } from "../../lib/db/rls-session";
 import { adminPrisma } from "../../lib/admin-prisma";
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_URL = process.env.SUPABASE_INTERNAL_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -107,14 +107,15 @@ describe.skipIf(!hasEnv)("Isolation multi-tenant RLS — Étape 1", () => {
       throw createError ?? new Error(`Échec de création de l'utilisateur ${label}`);
     }
 
-    const { error: profileError } = await admin.from("users").insert({
-      id: created.user.id,
-      tenant_id: tenantId,
-      email,
-      full_name: `RLS Test ${label}`,
-      role,
+    await adminPrisma.user.create({
+      data: {
+        id: created.user.id,
+        tenantId,
+        email,
+        fullName: `RLS Test ${label}`,
+        role,
+      },
     });
-    if (profileError) throw profileError;
 
     return { id: created.user.id, email };
   }
@@ -154,13 +155,14 @@ describe.skipIf(!hasEnv)("Isolation multi-tenant RLS — Étape 1", () => {
     });
 
     // 1. Deux tenants de test.
-    const { data: tenants, error: tenantsError } = await admin
-      .from("tenants")
-      .insert([{ name: `rls-test-tenant-a-${runId}` }, { name: `rls-test-tenant-b-${runId}` }])
-      .select();
-    if (tenantsError || !tenants) throw tenantsError;
-    tenantA = tenants.find((t) => (t.name as string).includes("tenant-a"))!;
-    tenantB = tenants.find((t) => (t.name as string).includes("tenant-b"))!;
+    tenantA = (await adminPrisma.tenant.create({
+      data: { name: `rls-test-tenant-a-${runId}` },
+      select: { id: true, name: true },
+    })) as Row;
+    tenantB = (await adminPrisma.tenant.create({
+      data: { name: `rls-test-tenant-b-${runId}` },
+      select: { id: true, name: true },
+    })) as Row;
 
     // 2. Un salon_admin par tenant, et un owner supplémentaire sous tenant A (rôle
     // ajouté par docs/architecture/012-role-owner.md — cf. tests plus bas).
@@ -169,76 +171,52 @@ describe.skipIf(!hasEnv)("Isolation multi-tenant RLS — Étape 1", () => {
     ownerA = await createTestUser(tenantA.id, "tenant-a-owner", "owner");
 
     // 3. Seed client + service + staff + appointment sous tenant A uniquement.
-    const { data: seededClient, error: clientError } = await admin
-      .from("clients")
-      .insert({ tenant_id: tenantA.id, name: `RLS Test Client ${runId}` })
-      .select()
-      .single();
-    if (clientError || !seededClient) throw clientError;
-    clientA = seededClient;
+    clientA = (await adminPrisma.client.create({
+      data: { tenantId: tenantA.id, name: `RLS Test Client ${runId}` },
+    })) as Row;
 
-    const { data: seededService, error: serviceError } = await admin
-      .from("services")
-      .insert({
-        tenant_id: tenantA.id,
+    serviceA = (await adminPrisma.service.create({
+      data: {
+        tenantId: tenantA.id,
         name: `RLS Test Service ${runId}`,
-        default_price: 5000,
-      })
-      .select()
-      .single();
-    if (serviceError || !seededService) throw serviceError;
-    serviceA = seededService;
+        defaultPrice: 5000,
+      },
+    })) as Row;
 
     // staff requis par appointments.staff_id (NOT NULL) — pas dans la liste demandée
     // explicitement mais indispensable pour insérer un appointment valide.
-    const { data: seededStaff, error: staffError } = await admin
-      .from("staff")
-      .insert({ tenant_id: tenantA.id, name: `RLS Test Staff ${runId}` })
-      .select()
-      .single();
-    if (staffError || !seededStaff) throw staffError;
-    staffA = seededStaff;
+    staffA = (await adminPrisma.staff.create({
+      data: { tenantId: tenantA.id, name: `RLS Test Staff ${runId}` },
+    })) as Row;
 
-    const { data: seededAppointment, error: appointmentError } = await admin
-      .from("appointments")
-      .insert({
-        tenant_id: tenantA.id,
-        client_id: clientA.id,
-        staff_id: staffA.id,
-        created_by: userA.id,
+    appointmentA = (await adminPrisma.appointment.create({
+      data: {
+        tenantId: tenantA.id,
+        clientId: clientA.id,
+        staffId: staffA.id,
+        createdById: userA.id,
         source: "walk_in",
-        start_time: new Date().toISOString(),
-      })
-      .select()
-      .single();
-    if (appointmentError || !seededAppointment) throw appointmentError;
-    appointmentA = seededAppointment;
+        startTime: new Date(),
+      },
+    })) as Row;
 
     // 3bis. Deux clients déjà soft-deleted sous tenant A (via service_role, qui
     // contourne RLS), pour les tests de restauration ci-dessous — un par test, pour ne
     // pas faire dépendre un test de l'état laissé par l'autre.
-    const { data: seededRestoreClients, error: restoreClientsError } = await admin
-      .from("clients")
-      .insert([
-        {
-          tenant_id: tenantA.id,
-          name: `RLS Test Client To Restore (own tenant) ${runId}`,
-          is_deleted: true,
-        },
-        {
-          tenant_id: tenantA.id,
-          name: `RLS Test Client To Restore (cross tenant) ${runId}`,
-          is_deleted: true,
-        },
-      ])
-      .select();
-    if (restoreClientsError || !seededRestoreClients) throw restoreClientsError;
-    clientToRestoreOwnTenant = seededRestoreClients.find((c) =>
-      (c.name as string).includes("own tenant"),
-    )!;
-    clientToRestoreCrossTenant = seededRestoreClients.find((c) =>
-      (c.name as string).includes("cross tenant"),
-    )!;
+    clientToRestoreOwnTenant = (await adminPrisma.client.create({
+      data: {
+        tenantId: tenantA.id,
+        name: `RLS Test Client To Restore (own tenant) ${runId}`,
+        isDeleted: true,
+      },
+    })) as Row;
+    clientToRestoreCrossTenant = (await adminPrisma.client.create({
+      data: {
+        tenantId: tenantA.id,
+        name: `RLS Test Client To Restore (cross tenant) ${runId}`,
+        isDeleted: true,
+      },
+    })) as Row;
 
     // 4. Vraies connexions + vraie vérification JWT, une par utilisateur.
     userAAuthId = await signInAndVerify(userA.email);
@@ -252,14 +230,18 @@ describe.skipIf(!hasEnv)("Isolation multi-tenant RLS — Étape 1", () => {
     const tenantIds = [tenantA?.id, tenantB?.id].filter(Boolean) as string[];
     if (tenantIds.length) {
       // Enfants avant parents pour respecter les contraintes FK.
-      await admin.from("payments").delete().in("tenant_id", tenantIds);
-      await admin.from("appointment_services").delete().in("tenant_id", tenantIds);
-      await admin.from("appointments").delete().in("tenant_id", tenantIds);
-      await admin.from("clients").delete().in("tenant_id", tenantIds);
-      await admin.from("services").delete().in("tenant_id", tenantIds);
-      await admin.from("staff").delete().in("tenant_id", tenantIds);
-      await admin.from("users").delete().in("tenant_id", tenantIds);
-      await admin.from("tenants").delete().in("id", tenantIds);
+      await adminPrisma.payment.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await adminPrisma.appointmentService.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await adminPrisma.expense.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await adminPrisma.appointment.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await adminPrisma.client.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await adminPrisma.service.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await adminPrisma.serviceCategory.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await adminPrisma.staffJobTitle.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await adminPrisma.staff.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await adminPrisma.jobTitle.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await adminPrisma.user.deleteMany({ where: { tenantId: { in: tenantIds } } });
+      await adminPrisma.tenant.deleteMany({ where: { id: { in: tenantIds } } });
     }
 
     // Suppression des comptes auth (non couverte par les deletes ci-dessus : public.users
@@ -425,6 +407,31 @@ describe.skipIf(!hasEnv)("Isolation multi-tenant RLS — Étape 1", () => {
     expect(clients).toHaveLength(1);
     expect(services).toHaveLength(1);
     expect(appointments).toHaveLength(1);
+  });
+
+  it("un owner de tenant A peut créer un client dans son tenant mais pas dans le tenant B", async () => {
+    const created = await withRlsSession(
+      (tx) =>
+        tx.client.create({
+          data: { tenantId: tenantA.id, name: `RLS Owner Client ${runId}` },
+          select: { id: true, tenantId: true },
+        }),
+      ownerAAuthId,
+    );
+
+    expect(created.tenantId).toBe(tenantA.id);
+
+    await expect(
+      withRlsSession(
+        (tx) =>
+          tx.client.create({
+            data: { tenantId: tenantB.id, name: `RLS Owner Cross Tenant Client ${runId}` },
+          }),
+        ownerAAuthId,
+      ),
+    ).rejects.toThrow(/row-level security/i);
+
+    await adminPrisma.client.delete({ where: { id: created.id } });
   });
 
   it("un owner de tenant A ne peut pas lire les utilisateurs de tenant B", async () => {

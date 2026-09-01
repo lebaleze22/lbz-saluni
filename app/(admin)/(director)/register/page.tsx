@@ -9,7 +9,7 @@ import {
   PAYMENT_METHOD_LABELS,
   SOURCE_LABELS,
 } from "@/lib/format";
-import { QuickEntryForm } from "@/app/(admin)/register/quick-entry-form";
+import { QuickEntryForm } from "@/app/(admin)/(director)/register/quick-entry-form";
 import { registerFiltersSchema } from "@/lib/validation/register";
 
 export const dynamic = "force-dynamic";

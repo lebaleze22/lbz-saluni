@@ -1,0 +1,223 @@
+# Stack locale minimale — LBZ / Caprice D'Ebène, exécution 100% locale sur la machine du
+# salon (Mac, 8 Go de RAM), sans dépendance à Supabase Cloud ni au VPS.
+# Voir docs/architecture/017-stack-locale-caprice.md pour la décision complète.
+#
+# Volontairement réduit par rapport au bundle Supabase self-hosted complet : Kong (API
+# gateway), PostgREST, Realtime, Storage, Studio, Analytics/Vector, Meta, ImgProxy ne
+# sont JAMAIS utilisés par cette application — elle parle exclusivement via Prisma
+# (jamais PostgREST) et l'API Auth (GoTrue) pour signInWithPassword/l'API admin de
+# création d'utilisateurs. nginx remplace Kong pour le seul routage dont l'app a besoin
+# (/auth/v1/* -> gotrue, tout le reste -> core-api) — voir nginx/local.conf.
+#
+# Fichier séparé de docker-compose.yml (VPS) : ni un remplacement, ni une évolution du
+# premier. Usage explicite uniquement :
+#   docker compose --env-file .env.local -f docker-compose.local.yml <commande>
+# `docker compose up` seul (sans -f) continue de lire docker-compose.yml, comportement
+# VPS inchangé. --env-file .env.local est nécessaire à CHAQUE commande : sans lui, Docker
+# Compose interpolerait les ${VARIABLES} de ce fichier depuis le .env par défaut (les
+# vraies clés Supabase Cloud), pas depuis .env.local.
+#
+# Séquence de démarrage (documentée en détail dans docs/architecture/017-*.md et
+# .env.local.example — PAS un simple `up` en une commande, par choix assumé, même
+# principe que Dockerfile qui n'exécute jamais `prisma migrate deploy` automatiquement) :
+#   1. docker compose --env-file .env.local -f docker-compose.local.yml up -d postgres gotrue
+#   2. docker compose --env-file .env.local -f docker-compose.local.yml run --rm tooling npx prisma migrate deploy
+#   3. docker compose --env-file .env.local -f docker-compose.local.yml run --rm tooling \
+#        node scripts/local-stack/set-app-runtime-password.mjs
+#   4. docker compose --env-file .env.local -f docker-compose.local.yml up -d core-api nginx
+#   5. docker compose --env-file .env.local -f docker-compose.local.yml run --rm tooling \
+#        node scripts/seed-dev.mjs
+#   6. docker compose --env-file .env.local -f docker-compose.local.yml run --rm tooling \
+#        node scripts/seed-owner-dev.mjs
+#
+# Pourquoi un service `tooling` séparé de `core-api` pour les étapes 2/6 (migrations,
+# scripts d'administration) plutôt que `core-api` lui-même : l'image finale de `core-api`
+# (stage "runner" du Dockerfile) est volontairement minimale — seulement le serveur
+# Next.js standalone et le client Prisma généré, PAS le CLI `prisma` complet, PAS
+# `prisma/migrations/`, PAS `scripts/*.mjs` (voir Dockerfile, stage "runner"). `tooling`
+# cible le stage "builder" du même Dockerfile (source complète, node_modules complet,
+# CLI Prisma inclus) — jamais démarré par un simple `up` (voir `profiles` ci-dessous),
+# uniquement invoqué via `run --rm tooling <commande>`.
+#
+# Réseau interne "lbz-local" — nginx est le seul service qui publie un port sur l'hôte,
+# même principe que docker-compose.yml (VPS, réseau "lbz-internal").
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: lbz-local-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${LOCAL_POSTGRES_PASSWORD:?LOCAL_POSTGRES_PASSWORD requis dans .env.local}
+      POSTGRES_DB: postgres
+    volumes:
+      - lbz-local-postgres-data:/var/lib/postgresql/data
+      # Exécuté une seule fois, au tout premier démarrage (volume vide) — voir le
+      # fichier lui-même pour pourquoi ce script existe.
+      - ./docker/local/postgres-init:/docker-entrypoint-initdb.d:ro
+    expose:
+      - "5432"
+    networks:
+      - lbz-local
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  gotrue:
+    image: supabase/gotrue:v2.170.0
+    container_name: lbz-local-gotrue
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: "9999"
+      GOTRUE_DB_DRIVER: postgres
+      # Connexion superuser directe : simplification assumée par rapport à Supabase
+      # Cloud (qui sépare supabase_auth_admin/authenticator/postgres) — un seul salon,
+      # une seule machine locale de confiance, pas une plateforme multi-tenant hébergée.
+      # Voir docs/architecture/017-*.md.
+      # ?options=-c%20search_path=auth : GoTrue crée ses propres types/tables SANS les
+      # qualifier par schéma (ex. `create type factor_type ...`) — sans ceci, ils
+      # atterrissent dans le search_path par défaut de la connexion (public en premier),
+      # puis une migration GoTrue ultérieure qui les référence explicitement en
+      # `auth.factor_type` échoue avec "does not exist". Vérifié empiriquement : premier
+      # essai sans ce paramètre, `factor_type` s'est bien retrouvé dans public. Scopé à
+      # CETTE connexion uniquement (paramètre de session, pas `ALTER ROLE ... SET
+      # search_path` global) : les migrations Prisma, qui se connectent séparément en
+      # tant que `postgres` via DIRECT_URL, ne sont pas concernées et gardent leur
+      # search_path par défaut (elles créent leurs tables sans qualification de schéma
+      # en s'appuyant sur `public` étant déjà premier par défaut).
+      GOTRUE_DB_DATABASE_URL: postgres://postgres:${LOCAL_POSTGRES_PASSWORD}@postgres:5432/postgres?options=-c%20search_path=auth
+      # URL externe telle qu'un client l'atteint réellement (via nginx, /auth/v1) — même
+      # convention que Supabase Cloud (ex. https://<projet>.supabase.co/auth/v1).
+      # Exceptionnellement SANS préfixe GOTRUE_ : cette clé précise est lue par GoTrue
+      # comme variable brute API_EXTERNAL_URL (vérifié empiriquement — GOTRUE_API_EXTERNAL_URL
+      # est bien reçue par le conteneur mais rejetée comme "manquante" par GoTrue lui-même).
+      API_EXTERNAL_URL: ${LOCAL_PUBLIC_URL:-http://localhost:54321}/auth/v1
+      GOTRUE_SITE_URL: ${LOCAL_PUBLIC_URL:-http://localhost:54321}
+      GOTRUE_URI_ALLOW_LIST: "*"
+      # Provisioning admin uniquement (scripts) — jamais self-service, cf.
+      # docs/architecture/012-role-owner.md. Cohérent avec seed-dev.mjs/
+      # import-catalogue-caprice.mjs qui créent des comptes via l'API admin, jamais via
+      # un formulaire d'inscription public.
+      GOTRUE_DISABLE_SIGNUP: "true"
+      GOTRUE_JWT_SECRET: ${GOTRUE_JWT_SECRET:?GOTRUE_JWT_SECRET requis dans .env.local}
+      GOTRUE_JWT_EXP: "3600"
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      # Pas de serveur mail local (stack 100% offline) : les comptes sont créés via
+      # l'API admin avec email_confirm: true explicite (seed-dev.mjs), donc ce réglage
+      # ne concerne en pratique aucun flux de ce projet — posé par défenses en profondeur
+      # au cas où un flux futur passerait par un e-mail de confirmation.
+      GOTRUE_MAILER_AUTOCONFIRM: "true"
+      GOTRUE_LOG_LEVEL: info
+    expose:
+      - "9999"
+    networks:
+      - lbz-local
+
+  core-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Doit être joignable depuis le NAVIGATEUR (inliné dans le bundle client par
+        # Next.js) : l'URL publique de nginx, jamais un nom de service Docker interne.
+        NEXT_PUBLIC_SUPABASE_URL: ${LOCAL_PUBLIC_URL:-http://localhost:54321}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:?voir scripts/local-stack/generate-jwt-keys.mjs}
+    container_name: lbz-local-core-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      gotrue:
+        condition: service_started
+    env_file:
+      - .env.local
+    environment:
+      # Composées ici (pas dans .env.local) : un fichier .env n'interpole PAS les
+      # ${VARIABLES} qu'il contient lui-même (contrairement au fichier compose) — écrire
+      # ces URLs directement dans .env.local laisserait "${LOCAL_APP_RUNTIME_PASSWORD}"
+      # comme texte littéral non substitué. `environment:` a priorité sur `env_file:`
+      # pour une même clé, donc ces trois valeurs prévalent quoi qu'il arrive.
+      DATABASE_URL: postgresql://app_runtime:${LOCAL_APP_RUNTIME_PASSWORD}@postgres:5432/postgres
+      DIRECT_URL: postgresql://postgres:${LOCAL_POSTGRES_PASSWORD}@postgres:5432/postgres
+      ADMIN_DATABASE_URL: postgresql://postgres:${LOCAL_POSTGRES_PASSWORD}@postgres:5432/postgres
+      AUTH_JWT_SECRET: ${GOTRUE_JWT_SECRET:?GOTRUE_JWT_SECRET requis dans .env.local}
+      # localhost partage ses cookies entre tous les ports/projets. Aligne la limite
+      # HTTP de Node sur celle du proxy local pour accepter ces en-têtes en dev.
+      NODE_OPTIONS: --max-http-header-size=32768
+    expose:
+      - "3000"
+    networks:
+      - lbz-local
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://127.0.0.1:3000/', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+  # Jamais démarré par `docker compose up` (pas de profil actif par défaut) — utilisé
+  # uniquement via `docker compose --env-file .env.local -f docker-compose.local.yml
+  # run --rm tooling <commande>` (prisma migrate deploy, scripts/seed-dev.mjs,
+  # scripts/import-catalogue-caprice.mjs). Voir la note plus haut sur le choix du stage
+  # "builder".
+  tooling:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${LOCAL_PUBLIC_URL:-http://localhost:54321}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:?voir scripts/local-stack/generate-jwt-keys.mjs}
+    container_name: lbz-local-tooling
+    profiles: ["tooling"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env.local
+    environment:
+      DATABASE_URL: postgresql://app_runtime:${LOCAL_APP_RUNTIME_PASSWORD}@postgres:5432/postgres
+      DIRECT_URL: postgresql://postgres:${LOCAL_POSTGRES_PASSWORD}@postgres:5432/postgres
+      ADMIN_DATABASE_URL: postgresql://postgres:${LOCAL_POSTGRES_PASSWORD}@postgres:5432/postgres
+      AUTH_JWT_SECRET: ${GOTRUE_JWT_SECRET:?GOTRUE_JWT_SECRET requis dans .env.local}
+    networks:
+      - lbz-local
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: lbz-local-nginx
+    restart: unless-stopped
+    ports:
+      - "${LOCAL_HTTP_PORT:-54321}:80"
+    volumes:
+      - ./nginx/local.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      core-api:
+        condition: service_healthy
+      gotrue:
+        condition: service_started
+    networks:
+      - lbz-local
+
+networks:
+  lbz-local:
+    name: lbz-local
+    driver: bridge
+
+volumes:
+  lbz-local-postgres-data:
+    name: lbz-local-postgres-data

@@ -50,6 +50,8 @@ export type PaymentAmount = {
 
 export type ReportSummary = {
   totalRevenue: number;
+  totalExpenses: number;
+  netResult: number;
   paymentMethods: PaymentAmount[];
   staff: NamedAmount[];
   services: NamedAmount[];

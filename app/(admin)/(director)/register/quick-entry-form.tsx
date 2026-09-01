@@ -5,8 +5,12 @@ import { useFormState, useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, CirclePlus, Loader2, Trash2 } from "lucide-react";
 import { formatFcfa } from "@/lib/format";
+import { groupByServiceCategory } from "@/lib/services/group-by-category";
 import type { ClientOption, ServiceOption, StaffOption } from "@/types/register";
-import { submitRegisterEntry, type RegisterFormState } from "@/app/(admin)/register/actions";
+import {
+  submitRegisterEntry,
+  type RegisterFormState,
+} from "@/app/(admin)/(director)/register/actions";
 
 type ServiceLine = {
   key: number;
@@ -55,6 +59,7 @@ export function QuickEntryForm({
   const defaultServiceId = services[0]?.id ?? "";
   const defaultServicePrice = services[0]?.defaultPrice ?? 0;
   const [source, setSource] = useState<"reservation" | "walk_in">("walk_in");
+  const [clientSex, setClientSex] = useState<"" | "femme" | "homme">("");
   const [startTime, setStartTime] = useState(nowForInput);
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [nextKey, setNextKey] = useState(2);
@@ -66,11 +71,13 @@ export function QuickEntryForm({
     },
   ]);
   const total = useMemo(() => lines.reduce((sum, line) => sum + line.price, 0), [lines]);
+  const serviceGroups = useMemo(() => groupByServiceCategory(services), [services]);
 
   useEffect(() => {
     if (!state.success) return;
     formRef.current?.reset();
     setSource("walk_in");
+    setClientSex("");
     setStartTime(nowForInput());
     setPaymentMethod("cash");
     setLines([
@@ -95,6 +102,7 @@ export function QuickEntryForm({
   return (
     <form ref={formRef} action={formAction} className="space-y-6">
       <input type="hidden" name="source" value={source} />
+      <input type="hidden" name="sex" value={clientSex} />
       <input
         type="hidden"
         name="startTime"
@@ -145,6 +153,32 @@ export function QuickEntryForm({
         </label>
       </fieldset>
 
+      <fieldset>
+        <legend className="mb-2 text-sm font-semibold text-stone-700">
+          Sexe du client <span className="font-normal text-stone-400">(optionnel)</span>
+        </legend>
+        <div className="grid grid-cols-2 rounded-xl bg-stone-100 p-1">
+          {(
+            [
+              ["femme", "Femme"],
+              ["homme", "Homme"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={clientSex === value}
+              onClick={() => setClientSex((current) => (current === value ? "" : value))}
+              className={`rounded-lg px-3 py-2.5 text-sm font-bold transition ${
+                clientSex === value ? "bg-white text-emerald-950 shadow-sm" : "text-stone-500"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+
       <fieldset className="grid gap-4 sm:grid-cols-2">
         <label className="space-y-2 text-sm font-semibold text-stone-700">
           <span>Personnel</span>
@@ -160,6 +194,9 @@ export function QuickEntryForm({
             {staff.map((member) => (
               <option key={member.id} value={member.id}>
                 {member.name}
+                {member.jobTitles.length > 0
+                  ? ` — ${member.jobTitles.map((title) => title.name).join(", ")}`
+                  : ""}
               </option>
             ))}
           </select>
@@ -204,7 +241,12 @@ export function QuickEntryForm({
 
       <fieldset className="space-y-3">
         <div className="flex items-center justify-between">
-          <legend className="text-sm font-semibold text-stone-700">Prestations</legend>
+          <div>
+            <legend className="text-sm font-semibold text-stone-700">Prestations</legend>
+            <p className="mt-0.5 text-xs text-stone-400">
+              Le prix proposé est modifiable pour cette visite.
+            </p>
+          </div>
           <button
             type="button"
             onClick={() => {
@@ -248,16 +290,20 @@ export function QuickEntryForm({
               <option value="" disabled>
                 Sélectionner
               </option>
-              {services.map((service) => (
-                <option
-                  key={service.id}
-                  value={service.id}
-                  disabled={lines.some(
-                    (item) => item.key !== line.key && item.serviceId === service.id,
-                  )}
-                >
-                  {service.name}
-                </option>
+              {serviceGroups.map((group) => (
+                <optgroup key={group.id} label={group.name}>
+                  {group.items.map((service) => (
+                    <option
+                      key={service.id}
+                      value={service.id}
+                      disabled={lines.some(
+                        (item) => item.key !== line.key && item.serviceId === service.id,
+                      )}
+                    >
+                      {service.name}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
             <label className="sr-only" htmlFor={`price-${line.key}`}>

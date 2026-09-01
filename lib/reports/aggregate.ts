@@ -19,6 +19,7 @@ function sortByAmount<T extends { amount: number; label: string }>(items: T[]): 
 export function aggregateReportRows(
   rows: ReportRow[],
   range: Pick<ReportDateRange, "start" | "end">,
+  totalExpenses = 0,
 ): ReportSummary {
   const paymentMethods = new Map<PaymentMethod, PaymentAmount>(
     PAYMENT_METHODS.map((method) => [
@@ -84,6 +85,8 @@ export function aggregateReportRows(
 
   return {
     totalRevenue,
+    totalExpenses,
+    netResult: totalRevenue - totalExpenses,
     paymentMethods: PAYMENT_METHODS.map((method) => paymentMethods.get(method)!),
     staff: sortByAmount(Array.from(staff.values())),
     services: sortByAmount(Array.from(services.values())),

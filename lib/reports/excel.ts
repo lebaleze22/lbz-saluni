@@ -29,6 +29,8 @@ export function generateReportWorkbook(report: ReportData): Buffer {
       Indicateur: "Chiffre d’affaires total",
       Valeur: formatFcfa(report.summary.totalRevenue),
     },
+    { Indicateur: "Dépenses totales", Valeur: formatFcfa(report.summary.totalExpenses) },
+    { Indicateur: "Résultat net", Valeur: formatFcfa(report.summary.netResult) },
     { Indicateur: "Nombre de prestations", Valeur: report.summary.serviceVolume },
     { Indicateur: "Nombre de visites", Valeur: report.summary.visitVolume },
     { Indicateur: "Clients uniques", Valeur: report.summary.uniqueClients },

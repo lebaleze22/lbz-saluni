@@ -58,6 +58,14 @@ ENV NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Prisma valide les URLs de datasource dès l'import de certains modules pendant la
+# collecte des pages Next.js. Le build ne se connecte jamais à la base, mais une URL
+# syntaxiquement valide reste requise. Ces valeurs sont limitées au stage builder ;
+# docker-compose injecte les vraies URLs au runtime dans core-api/tooling.
+ENV DATABASE_URL=postgresql://build:build@127.0.0.1:5432/build
+ENV DIRECT_URL=postgresql://build:build@127.0.0.1:5432/build
+ENV ADMIN_DATABASE_URL=postgresql://build:build@127.0.0.1:5432/build
+
 # Le client Prisma doit être régénéré ici (pas seulement copié depuis deps) : il faut le
 # binaire moteur natif de CETTE plateforme (linux/musl), différent de celui généré sur
 # la machine de dev (Windows/macOS).

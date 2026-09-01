@@ -5,7 +5,9 @@ import {
   Download,
   FileSpreadsheet,
   FileText,
+  ReceiptText,
   Scissors,
+  Scale,
   UserRound,
   UsersRound,
   WalletCards,
@@ -121,13 +123,25 @@ export default async function ReportsPage({
         </form>
       </section>
 
-      <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         {[
           {
             label: "Chiffre d’affaires",
             value: formatFcfa(report.summary.totalRevenue),
             detail: `${report.summary.visitVolume} visite(s)`,
             icon: WalletCards,
+          },
+          {
+            label: "Dépenses",
+            value: formatFcfa(report.summary.totalExpenses),
+            detail: "sur la période",
+            icon: ReceiptText,
+          },
+          {
+            label: "Résultat net",
+            value: formatFcfa(report.summary.netResult),
+            detail: "chiffre d’affaires − dépenses",
+            icon: Scale,
           },
           {
             label: "Prestations",

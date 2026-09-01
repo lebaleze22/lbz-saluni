@@ -30,6 +30,7 @@ export async function submitRegisterEntry(
   const parsed = registerEntrySchema.safeParse({
     clientName: formData.get("clientName"),
     phone: formData.get("phone"),
+    sex: formData.get("sex"),
     staffId: formData.get("staffId"),
     source: formData.get("source"),
     startTime: formData.get("startTime"),

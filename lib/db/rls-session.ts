@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { adminPrisma } from "@/lib/admin-prisma";
 import { AccessDeniedError } from "@/lib/db/auth";
+import { verifySupabaseAccessToken } from "@/lib/supabase/verify-jwt";
 
 export type RlsIdentity = {
   userId: string;
@@ -17,25 +18,33 @@ export type RlsIdentity = {
  * `current_user_id()` — voir docs/architecture/014-decouplage-rls-auth-provider.md.
  *
  * Le seul fournisseur d'auth concerné par `resolveRlsIdentity` est Supabase
- * (`getUser()`) ; migrer vers un autre fournisseur ne toucherait QUE ce fichier, jamais
- * les policies RLS elles-mêmes (c'est exactement l'objectif du découplage).
+ * (session cookie + vérification JWT locale, `lib/supabase/verify-jwt.ts`) ; migrer
+ * vers un autre fournisseur ne toucherait QUE ce fichier, jamais les policies RLS
+ * elles-mêmes (c'est exactement l'objectif du découplage).
  */
 export async function resolveRlsIdentity(verifiedAuthUserId?: string): Promise<RlsIdentity> {
   let authUserId = verifiedAuthUserId;
 
   if (!authUserId) {
     // Chemin normal (Next.js Server Component/Route Handler) : createClient() lit les
-    // cookies via next/headers, indisponible hors d'une requête Next.js.
+    // cookies via next/headers, indisponible hors d'une requête Next.js. getSession()
+    // ne fait AUCUN appel réseau pour une session encore valide (contrairement à
+    // getUser()) ; la vérification de signature/expiration se fait ensuite localement —
+    // voir docs/architecture/020-verification-jwt-locale.md.
     const supabase = createClient();
     const {
-      data: { user: authUser },
-      error,
-    } = await supabase.auth.getUser();
+      data: { session },
+    } = await supabase.auth.getSession();
 
-    if (error || !authUser) {
+    if (!session) {
       throw new AccessDeniedError();
     }
-    authUserId = authUser.id;
+
+    const verified = await verifySupabaseAccessToken(session.access_token);
+    if (!verified) {
+      throw new AccessDeniedError();
+    }
+    authUserId = verified.userId;
   }
   // `verifiedAuthUserId`, quand fourni, doit provenir d'une vérification JWT déjà faite
   // par l'appelant (ex. tests/rls/tenant-isolation.test.ts, qui vérifie un vrai JWT

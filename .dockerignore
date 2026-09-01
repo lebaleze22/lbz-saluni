@@ -4,7 +4,6 @@ node_modules
 .husky
 .claude
 docs
-tests
 *.md
 .env
 .env*.local

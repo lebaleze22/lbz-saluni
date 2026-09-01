@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { PrismaClient } from "@prisma/client";
 import { config as loadEnv } from "dotenv";
 
 loadEnv({ path: [".env.local", ".env"], quiet: true });
@@ -8,12 +9,19 @@ const ADMIN_FULL_NAME = "SIRE";
 const ADMIN_EMAIL = process.env.SEED_DEV_ADMIN_EMAIL ?? "sire.dev@caprice-ebene.com";
 const ADMIN_PASSWORD = process.env.SEED_DEV_ADMIN_PASSWORD ?? "CapriceDev2026!";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+// SUPABASE_INTERNAL_URL : uniquement pour la stack locale (docker-compose.local.yml,
+// docs/architecture/017-stack-locale-caprice.md) — quand ce script tourne DANS un
+// conteneur (ex. `docker compose run --rm core-api node scripts/seed-dev.mjs`),
+// NEXT_PUBLIC_SUPABASE_URL (http://localhost, joignable depuis le navigateur) résout
+// vers le conteneur lui-même, pas vers nginx. Non défini sur Supabase Cloud : aucun
+// changement de comportement là où ce script tournait déjà.
+const supabaseUrl = process.env.SUPABASE_INTERNAL_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const adminDatabaseUrl = process.env.ADMIN_DATABASE_URL ?? process.env.DIRECT_URL;
 
-if (!supabaseUrl || !serviceRoleKey) {
+if (!supabaseUrl || !serviceRoleKey || !adminDatabaseUrl) {
   throw new Error(
-    "NEXT_PUBLIC_SUPABASE_URL et SUPABASE_SERVICE_ROLE_KEY doivent être renseignés " +
+    "NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY et ADMIN_DATABASE_URL doivent être renseignés " +
       "dans .env.local ou .env pour le projet Supabase de développement.",
   );
 }
@@ -21,39 +29,30 @@ if (!supabaseUrl || !serviceRoleKey) {
 const admin = createClient(supabaseUrl, serviceRoleKey, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
+const prisma = new PrismaClient({ datasourceUrl: adminDatabaseUrl });
 
 async function getOrCreateTenant() {
-  const { data: tenants, error: findError } = await admin
-    .from("tenants")
-    .select("id, name")
-    .eq("name", TENANT_NAME)
-    .limit(2);
-
-  if (findError) throw findError;
+  const tenants = await prisma.tenant.findMany({
+    where: { name: TENANT_NAME },
+    take: 2,
+    select: { id: true, name: true },
+  });
   if (tenants.length > 1) {
     throw new Error(`Plusieurs tenants portent déjà le nom « ${TENANT_NAME} ».`);
   }
 
   if (tenants.length === 1) {
-    const { data: tenant, error: updateError } = await admin
-      .from("tenants")
-      .update({ active: true, is_deleted: false, deleted_at: null })
-      .eq("id", tenants[0].id)
-      .select("id, name")
-      .single();
-
-    if (updateError) throw updateError;
-    return tenant;
+    return prisma.tenant.update({
+      where: { id: tenants[0].id },
+      data: { active: true, isDeleted: false, deletedAt: null },
+      select: { id: true, name: true },
+    });
   }
 
-  const { data: tenant, error: createError } = await admin
-    .from("tenants")
-    .insert({ name: TENANT_NAME })
-    .select("id, name")
-    .single();
-
-  if (createError) throw createError;
-  return tenant;
+  return prisma.tenant.create({
+    data: { name: TENANT_NAME },
+    select: { id: true, name: true },
+  });
 }
 
 async function findAuthUserByEmail(email) {
@@ -105,30 +104,70 @@ async function getOrCreateAuthUser(tenantId) {
 
 async function upsertUserProfile(authUserId, tenantId) {
   const normalizedEmail = ADMIN_EMAIL.toLowerCase();
-  const { data: profileByEmail, error: emailLookupError } = await admin
-    .from("users")
-    .select("id")
-    .eq("email", normalizedEmail)
-    .maybeSingle();
-
-  if (emailLookupError) throw emailLookupError;
+  const profileByEmail = await prisma.user.findUnique({
+    where: { email: normalizedEmail },
+    select: { id: true },
+  });
   if (profileByEmail && profileByEmail.id !== authUserId) {
     throw new Error(`Le profil public ${normalizedEmail} existe avec un autre identifiant Auth.`);
   }
 
-  const profile = {
-    id: authUserId,
-    tenant_id: tenantId,
-    email: normalizedEmail,
-    full_name: ADMIN_FULL_NAME,
-    role: "salon_admin",
+  await prisma.user.upsert({
+    where: { id: authUserId },
+    create: {
+      id: authUserId,
+      tenantId,
+      email: normalizedEmail,
+      fullName: ADMIN_FULL_NAME,
+      role: "salon_admin",
+    },
+    update: {
+      tenantId,
+      email: normalizedEmail,
+      fullName: ADMIN_FULL_NAME,
+      role: "salon_admin",
+      active: true,
+      isDeleted: false,
+      deletedAt: null,
+    },
+  });
+}
+
+async function upsertDirectorStaff(authUserId, tenantId) {
+  const linkedStaff = await prisma.staff.findUnique({
+    where: { userId: authUserId },
+    select: { id: true },
+  });
+
+  const staff = {
+    tenantId,
+    name: ADMIN_FULL_NAME,
+    systemRole: "director",
+    userId: authUserId,
     active: true,
-    is_deleted: false,
-    deleted_at: null,
+    isDeleted: false,
+    deletedAt: null,
   };
 
-  const { error } = await admin.from("users").upsert(profile, { onConflict: "id" });
-  if (error) throw error;
+  if (linkedStaff) {
+    await prisma.staff.update({ where: { id: linkedStaff.id }, data: staff });
+    return;
+  }
+
+  const existingDirector = await prisma.staff.findFirst({
+    where: { tenantId, systemRole: "director", isDeleted: false },
+    select: { id: true, userId: true },
+  });
+  if (existingDirector?.userId && existingDirector.userId !== authUserId) {
+    throw new Error("Un autre Staff Director est déjà lié à un compte dans ce tenant.");
+  }
+
+  if (existingDirector) {
+    await prisma.staff.update({ where: { id: existingDirector.id }, data: staff });
+    return;
+  }
+
+  await prisma.staff.create({ data: staff });
 }
 
 async function main() {
@@ -137,6 +176,7 @@ async function main() {
 
   try {
     await upsertUserProfile(user.id, tenant.id);
+    await upsertDirectorStaff(user.id, tenant.id);
   } catch (error) {
     if (wasCreated) {
       const { error: rollbackError } = await admin.auth.admin.deleteUser(user.id);
@@ -150,11 +190,14 @@ async function main() {
   console.log("\nSeed de développement terminé.");
   console.log(`Tenant       : ${tenant.name} (${tenant.id})`);
   console.log(`Salon admin  : ${ADMIN_FULL_NAME}`);
+  console.log("Staff lié    : Director actif");
   console.log(`E-mail       : ${ADMIN_EMAIL.toLowerCase()}`);
   console.log(`Mot de passe : ${ADMIN_PASSWORD}\n`);
 }
 
-main().catch((error) => {
-  console.error("\nÉchec du seed de développement:", error);
-  process.exitCode = 1;
-});
+main()
+  .catch((error) => {
+    console.error("\nÉchec du seed de développement:", error);
+    process.exitCode = 1;
+  })
+  .finally(() => prisma.$disconnect());

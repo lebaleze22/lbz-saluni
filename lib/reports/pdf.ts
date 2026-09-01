@@ -52,6 +52,8 @@ export async function generateReportPdf(report: ReportData): Promise<Uint8Array>
     size: 15,
     font: bold,
   });
+  line(`Dépenses : ${formatFcfa(report.summary.totalExpenses)}`);
+  line(`Résultat net : ${formatFcfa(report.summary.netResult)}`, { size: 13, font: bold });
   line(
     `${report.summary.serviceVolume} prestation(s) • ${report.summary.visitVolume} visite(s) • ${report.summary.uniqueClients} client(s)`,
   );

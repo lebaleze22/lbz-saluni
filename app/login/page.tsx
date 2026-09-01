@@ -55,21 +55,21 @@ export default function LoginPage() {
               <Scissors className="size-5" aria-hidden="true" />
             </span>
             <div>
-              <p className="text-sm font-black tracking-[0.18em]">LEBALEZE</p>
-              <p className="text-xs text-emerald-100/75">Gestion du salon</p>
+              <p className="text-sm font-black tracking-[0.18em]">SALUNI</p>
+              <p className="text-xs text-emerald-100/75">Une solution LBZ</p>
             </div>
           </div>
 
           <div className="max-w-lg lg:pb-8">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-200">
-              Espace de gestion
+              Salon · Caprice D&apos;Ebène
             </p>
             <h1 className="mt-4 text-3xl font-black leading-tight tracking-tight sm:text-4xl lg:text-5xl">
               Votre salon, organisé au même endroit.
             </h1>
             <p className="mt-5 max-w-md text-sm leading-7 text-emerald-50/75 sm:text-base">
-              Retrouvez le registre d’activité et les rapports de Caprice D&apos;Ebène dans un
-              espace réservé à la gestion du salon.
+              Retrouvez le registre d’activité et les rapports du salon dans un espace réservé à sa
+              gestion.
             </p>
           </div>
 

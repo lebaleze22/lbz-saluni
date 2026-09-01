@@ -1,6 +1,6 @@
 import { getReportDateRange } from "@/lib/dates";
 import { aggregateReportRows } from "@/lib/reports/aggregate";
-import { requireSalonAdmin } from "@/lib/db/auth";
+import { requireAdminMember } from "@/lib/db/auth";
 import { runInTenantTransaction } from "@/lib/db/rls-session";
 import type { ReportData, ReportPeriod, ReportRow } from "@/types/reports";
 
@@ -8,44 +8,54 @@ export async function getReportData(
   period: ReportPeriod,
   referenceDate: string,
 ): Promise<ReportData> {
-  const user = await requireSalonAdmin();
+  const user = await requireAdminMember();
   const range = getReportDateRange(period, referenceDate);
 
-  const appointments = await runInTenantTransaction(
+  const [appointments, expenseTotals] = await runInTenantTransaction(
     { userId: user.id, tenantId: user.tenantId, role: user.role },
     (tx) =>
-      tx.appointment.findMany({
-        where: {
-          tenantId: user.tenantId,
-          startTime: { gte: range.start, lt: range.end },
-        },
-        orderBy: { startTime: "asc" },
-        select: {
-          id: true,
-          startTime: true,
-          source: true,
-          client: {
-            select: {
-              id: true,
-              name: true,
-              appointments: {
-                where: { tenantId: user.tenantId },
-                orderBy: { startTime: "asc" },
-                take: 1,
-                select: { startTime: true },
+      Promise.all([
+        tx.appointment.findMany({
+          where: {
+            tenantId: user.tenantId,
+            startTime: { gte: range.start, lt: range.end },
+          },
+          orderBy: { startTime: "asc" },
+          select: {
+            id: true,
+            startTime: true,
+            source: true,
+            client: {
+              select: {
+                id: true,
+                name: true,
+                appointments: {
+                  where: { tenantId: user.tenantId },
+                  orderBy: { startTime: "asc" },
+                  take: 1,
+                  select: { startTime: true },
+                },
               },
             },
-          },
-          staff: { select: { id: true, name: true } },
-          appointmentServices: {
-            select: {
-              price: true,
-              service: { select: { id: true, name: true } },
+            staff: { select: { id: true, name: true } },
+            appointmentServices: {
+              select: {
+                price: true,
+                service: { select: { id: true, name: true } },
+              },
             },
+            payments: { select: { amount: true, method: true } },
           },
-          payments: { select: { amount: true, method: true } },
-        },
-      }),
+        }),
+        tx.expense.aggregate({
+          where: {
+            tenantId: user.tenantId,
+            occurredAt: { gte: range.start, lt: range.end },
+            isDeleted: false,
+          },
+          _sum: { amount: true },
+        }),
+      ]),
   );
 
   const rows: ReportRow[] = appointments.map((appointment) => ({
@@ -69,6 +79,6 @@ export async function getReportData(
   return {
     range,
     rows,
-    summary: aggregateReportRows(rows, range),
+    summary: aggregateReportRows(rows, range, expenseTotals._sum.amount ?? 0),
   };
 }

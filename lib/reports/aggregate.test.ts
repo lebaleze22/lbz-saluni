@@ -100,4 +100,11 @@ describe("aggregateReportRows", () => {
     expect(result.paymentMethods).toHaveLength(3);
     expect(result.paymentMethods.every((item) => item.amount === 0)).toBe(true);
   });
+
+  it("calcule les dépenses et le résultat net de la période", () => {
+    const result = aggregateReportRows(rows, { start, end }, 9_500);
+
+    expect(result.totalExpenses).toBe(9_500);
+    expect(result.netResult).toBe(18_500);
+  });
 });

@@ -1,4 +1,6 @@
-# LBZ (LEBALEZE)
+# SALUNI
+
+SALUNI est édité par LBZ.
 
 Plateforme SaaS de gestion pour salons de beauté au Cameroun.
 
@@ -30,13 +32,45 @@ npm run seed:dev
 Le script lit `.env.local`, puis `.env`, et utilise `NEXT_PUBLIC_SUPABASE_URL` et
 `SUPABASE_SERVICE_ROLE_KEY`. Ces variables doivent pointer vers la base de développement,
 jamais vers la base de test RLS jetable ni vers la production. Le seed est séparé des
-tests RLS et ne crée aucun client, service, membre du staff ou rendez-vous de démonstration.
+tests RLS et ne crée aucun client, service ou rendez-vous de démonstration. Il crée uniquement
+la fiche Staff Director réelle liée au compte SIRE, requise par la garde des pages admin.
 
 Il peut être relancé : il réactive le tenant et le profil existants et remet le mot de
 passe du compte à la valeur prévue. Les identifiants utilisables pour la connexion locale
 sont affichés à la fin de l'exécution. Pour remplacer leurs valeurs par défaut, définir
 `SEED_DEV_ADMIN_EMAIL` et `SEED_DEV_ADMIN_PASSWORD` dans l'environnement avant de lancer
 la commande.
+
+Après le Director, le compte Owner local peut être provisionné sans aucune donnée métier
+de démonstration avec `npm run seed:owner:dev`. Par défaut :
+`owner.dev@caprice-ebene.com` / `CapriceOwner2026!`. Le script est idempotent et refuse
+d’écraser un autre Owner déjà présent dans le tenant.
+
+### Stack PostgreSQL/Supabase locale
+
+La stack locale complète utilise `http://localhost:54321` afin de ne pas entrer en
+collision avec un autre proxy sur le port 80. Première installation :
+
+```bash
+docker compose --env-file .env.local -f docker-compose.local.yml up -d postgres gotrue
+docker compose --env-file .env.local -f docker-compose.local.yml build tooling core-api
+docker compose --env-file .env.local -f docker-compose.local.yml run --rm tooling npx prisma migrate deploy
+docker compose --env-file .env.local -f docker-compose.local.yml run --rm tooling node scripts/local-stack/set-app-runtime-password.mjs
+docker compose --env-file .env.local -f docker-compose.local.yml up -d core-api nginx
+docker compose --env-file .env.local -f docker-compose.local.yml run --rm tooling node scripts/seed-dev.mjs
+docker compose --env-file .env.local -f docker-compose.local.yml run --rm tooling node scripts/seed-owner-dev.mjs
+docker compose --env-file .env.local -f docker-compose.local.yml run --rm tooling npm run import:catalogue
+```
+
+La dernière commande initialise, de façon idempotente, les 11 catégories et 81
+prestations de `docs/Catalogue_Prestations_Caprice_Ebene.md`, ainsi que cinq postes
+opérationnels de départ. Elle ne crée aucun client, rendez-vous ou membre du staff.
+
+La suite RLS s’exécute directement contre cette stack avec :
+
+```bash
+docker compose --env-file .env.local -f docker-compose.local.yml run --rm tooling npm run test:rls
+```
 
 ## Documentation
 

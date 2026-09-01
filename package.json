@@ -10,6 +10,8 @@
     "test": "vitest run",
     "test:rls": "vitest run --config vitest.rls.config.ts",
     "seed:dev": "node scripts/seed-dev.mjs",
+    "seed:owner:dev": "node scripts/seed-owner-dev.mjs",
+    "import:catalogue": "node scripts/import-catalogue-caprice.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky"
@@ -20,6 +22,7 @@
     "@supabase/supabase-js": "^2.112.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "jose": "^6.2.10",
     "lucide-react": "^1.33.0",
     "next": "14.2.35",
     "pdf-lib": "^1.17.1",

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { dateStringSchema } from "@/lib/validation/common";
+import { dateStringSchema } from "./common";
 
 export const registerFiltersSchema = z.object({
   date: dateStringSchema,
@@ -27,6 +27,10 @@ export const registerEntrySchema = z
       .max(30, "Le numéro de téléphone est trop long.")
       .optional()
       .transform((value) => value || undefined),
+    sex: z.preprocess(
+      (value) => (value === "" ? undefined : value),
+      z.enum(["homme", "femme"]).optional(),
+    ),
     staffId: z.string().uuid("Sélectionnez un membre du personnel."),
     source: z.enum(["reservation", "walk_in"], {
       message: "Choisissez réservation ou passage.",

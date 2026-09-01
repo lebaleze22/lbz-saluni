@@ -1,8 +1,9 @@
 import type { RegisterEntryInput } from "@/lib/validation/register";
 import { getDayRange } from "@/lib/dates";
-import { requireSalonAdmin } from "@/lib/db/auth";
+import { requireAdminMember } from "@/lib/db/auth";
 import { runInTenantTransaction } from "@/lib/db/rls-session";
 import type { RegisterPageData } from "@/types/register";
+import { registerStaffSelect } from "./register-staff-select";
 
 export class RegisterDataError extends Error {
   constructor(message: string) {
@@ -15,7 +16,7 @@ export async function getRegisterPageData(
   date: string,
   staffId?: string,
 ): Promise<RegisterPageData> {
-  const user = await requireSalonAdmin();
+  const user = await requireAdminMember();
   const { start, end } = getDayRange(date);
 
   // Toutes les lectures ci-dessous doivent partager LA MÊME transaction : app.tenant_id
@@ -28,12 +29,19 @@ export async function getRegisterPageData(
         tx.staff.findMany({
           where: { tenantId: user.tenantId, active: true },
           orderBy: { name: "asc" },
-          select: { id: true, name: true },
+          // Projection volontairement minimale pour le sélecteur du registre :
+          // jamais idType/idNumber ni aucune autre donnée administrative sensible.
+          select: registerStaffSelect,
         }),
         tx.service.findMany({
           where: { tenantId: user.tenantId, active: true },
           orderBy: { name: "asc" },
-          select: { id: true, name: true, defaultPrice: true },
+          select: {
+            id: true,
+            name: true,
+            defaultPrice: true,
+            category: { select: { id: true, name: true } },
+          },
         }),
         tx.client.findMany({
           where: { tenantId: user.tenantId },
@@ -71,7 +79,14 @@ export async function getRegisterPageData(
   );
 
   return {
-    staff,
+    staff: staff.map((member) => ({
+      id: member.id,
+      name: member.name,
+      jobTitles: member.jobTitles.map(({ jobTitle, isPrimary }) => ({
+        ...jobTitle,
+        isPrimary,
+      })),
+    })),
     services,
     clients,
     entries: appointments.map((appointment) => ({
@@ -91,7 +106,7 @@ export async function getRegisterPageData(
 }
 
 export async function createRegisterEntry(input: RegisterEntryInput) {
-  const user = await requireSalonAdmin();
+  const user = await requireAdminMember();
   const serviceIds = input.services.map(({ serviceId }) => serviceId);
 
   // Lectures de validation ET écritures dans LA MÊME transaction (app.tenant_id n'est
@@ -138,14 +153,20 @@ export async function createRegisterEntry(input: RegisterEntryInput) {
             : { name: { equals: input.clientName, mode: "insensitive" } }),
         },
         orderBy: { updatedAt: "desc" },
-        select: { id: true, phone: true },
+        select: { id: true, phone: true, sex: true },
       });
 
+      const shouldCompleteClient =
+        existingClient &&
+        ((input.phone && !existingClient.phone) || (input.sex && !existingClient.sex));
       const client =
-        (existingClient && input.phone && !existingClient.phone
+        (shouldCompleteClient
           ? await transaction.client.update({
               where: { id: existingClient.id },
-              data: { phone: input.phone },
+              data: {
+                ...(!existingClient.phone && input.phone ? { phone: input.phone } : {}),
+                ...(!existingClient.sex && input.sex ? { sex: input.sex } : {}),
+              },
               select: { id: true },
             })
           : existingClient) ??
@@ -154,6 +175,7 @@ export async function createRegisterEntry(input: RegisterEntryInput) {
             tenantId: user.tenantId,
             name: input.clientName,
             phone: input.phone,
+            sex: input.sex,
           },
           select: { id: true },
         }));
@@ -167,15 +189,15 @@ export async function createRegisterEntry(input: RegisterEntryInput) {
           source: input.source,
           startTime: input.startTime,
           appointmentServices: {
+            // Le prix saisi appartient uniquement à la visite. Service.defaultPrice
+            // reste une valeur de pré-remplissage et n'est jamais modifiée ici.
             create: input.services.map((line) => ({
-              tenantId: user.tenantId,
               serviceId: line.serviceId,
               price: line.price,
             })),
           },
           payments: {
             create: {
-              tenantId: user.tenantId,
               amount: input.paymentAmount,
               method: input.paymentMethod,
             },
