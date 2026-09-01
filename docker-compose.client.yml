@@ -1,0 +1,132 @@
+# Distribution locale préconstruite de SALUNI pour le Mac du salon.
+# Aucune image n'est construite sur place : toutes sont téléchargées depuis GHCR.
+
+name: saluni-client
+
+services:
+  postgres:
+    image: ${SALUNI_IMAGE_ROOT:-ghcr.io/lebaleze22/lbz-saluni}/postgres:${SALUNI_VERSION:-edge}
+    container_name: saluni-client-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${LOCAL_POSTGRES_PASSWORD:?LOCAL_POSTGRES_PASSWORD requis}
+      POSTGRES_DB: postgres
+    volumes:
+      - saluni-client-postgres-data:/var/lib/postgresql/data
+    expose:
+      - "5432"
+    networks:
+      - saluni-client
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  gotrue:
+    image: supabase/gotrue:v2.170.0
+    container_name: saluni-client-gotrue
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: "9999"
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://postgres:${LOCAL_POSTGRES_PASSWORD}@postgres:5432/postgres?options=-c%20search_path=auth
+      API_EXTERNAL_URL: ${LOCAL_PUBLIC_URL:-http://localhost:54321}/auth/v1
+      GOTRUE_SITE_URL: ${LOCAL_PUBLIC_URL:-http://localhost:54321}
+      GOTRUE_URI_ALLOW_LIST: ${LOCAL_PUBLIC_URL:-http://localhost:54321}/*
+      GOTRUE_DISABLE_SIGNUP: "true"
+      GOTRUE_JWT_SECRET: ${GOTRUE_JWT_SECRET:?GOTRUE_JWT_SECRET requis}
+      GOTRUE_JWT_EXP: "3600"
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_MAILER_AUTOCONFIRM: "true"
+      GOTRUE_LOG_LEVEL: info
+    expose:
+      - "9999"
+    networks:
+      - saluni-client
+
+  core-api:
+    image: ${SALUNI_IMAGE_ROOT:-ghcr.io/lebaleze22/lbz-saluni}/core-api:${SALUNI_VERSION:-edge}
+    container_name: saluni-client-core-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      gotrue:
+        condition: service_started
+    env_file:
+      - .env.client.local
+    environment:
+      SUPABASE_PUBLIC_URL: ${LOCAL_PUBLIC_URL:-http://localhost:54321}
+      SUPABASE_INTERNAL_URL: http://nginx
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:?SUPABASE_ANON_KEY requis}
+      DATABASE_URL: postgresql://app_runtime:${LOCAL_APP_RUNTIME_PASSWORD}@postgres:5432/postgres
+      DIRECT_URL: postgresql://postgres:${LOCAL_POSTGRES_PASSWORD}@postgres:5432/postgres
+      ADMIN_DATABASE_URL: postgresql://postgres:${LOCAL_POSTGRES_PASSWORD}@postgres:5432/postgres
+      AUTH_JWT_SECRET: ${GOTRUE_JWT_SECRET:?GOTRUE_JWT_SECRET requis}
+      NODE_OPTIONS: --max-http-header-size=32768
+    expose:
+      - "3000"
+    networks:
+      - saluni-client
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://127.0.0.1:3000/login', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      start_period: 20s
+      retries: 20
+
+  tooling:
+    image: ${SALUNI_IMAGE_ROOT:-ghcr.io/lebaleze22/lbz-saluni}/tooling:${SALUNI_VERSION:-edge}
+    container_name: saluni-client-tooling
+    profiles: ["tooling"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env.client.local
+    environment:
+      SUPABASE_PUBLIC_URL: ${LOCAL_PUBLIC_URL:-http://localhost:54321}
+      SUPABASE_INTERNAL_URL: http://nginx
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:?SUPABASE_ANON_KEY requis}
+      DATABASE_URL: postgresql://app_runtime:${LOCAL_APP_RUNTIME_PASSWORD}@postgres:5432/postgres
+      DIRECT_URL: postgresql://postgres:${LOCAL_POSTGRES_PASSWORD}@postgres:5432/postgres
+      ADMIN_DATABASE_URL: postgresql://postgres:${LOCAL_POSTGRES_PASSWORD}@postgres:5432/postgres
+      AUTH_JWT_SECRET: ${GOTRUE_JWT_SECRET:?GOTRUE_JWT_SECRET requis}
+    networks:
+      - saluni-client
+
+  nginx:
+    image: ${SALUNI_IMAGE_ROOT:-ghcr.io/lebaleze22/lbz-saluni}/nginx:${SALUNI_VERSION:-edge}
+    container_name: saluni-client-nginx
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${LOCAL_HTTP_PORT:-54321}:80"
+    depends_on:
+      core-api:
+        condition: service_healthy
+      gotrue:
+        condition: service_started
+    networks:
+      - saluni-client
+
+networks:
+  saluni-client:
+    name: saluni-client
+    driver: bridge
+
+volumes:
+  saluni-client-postgres-data:
+    name: saluni-client-postgres-data

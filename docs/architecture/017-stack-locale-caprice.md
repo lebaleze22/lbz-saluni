@@ -294,10 +294,10 @@ Silicon disponible pour cette tâche.
 
 ## Vérification
 
-- 23 migrations appliquées sur un PostgreSQL local vierge.
+- 24 migrations appliquées sur un PostgreSQL local vierge.
 - Seeds Director et Owner exécutés deux fois chacun pour confirmer leur idempotence.
-- Suite unitaire : 27/27 tests réussis.
-- Suite RLS locale : 10/10 tests réussis, avec fixtures automatiquement nettoyées.
+- Suite unitaire : 28/28 tests réussis.
+- Suite RLS locale : 11/11 tests réussis, avec fixtures automatiquement nettoyées.
 - Connexion mot de passe réelle Director puis Owner via GoTrue local.
 - Director : accès aux quatre routes opérationnelles, redirection hors de Staff/Postes.
 - Owner : accès aux quatre routes opérationnelles ainsi qu’à Staff/Postes.

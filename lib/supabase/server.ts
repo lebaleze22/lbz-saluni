@@ -15,9 +15,13 @@ export function createClient() {
   // joignable depuis n'importe quel conteneur du même réseau. Non défini sur
   // Supabase Cloud/le VPS (docker-compose.yml) : NEXT_PUBLIC_SUPABASE_URL y est déjà
   // joignable aussi bien du navigateur que du serveur, aucun changement de comportement.
-  const supabaseUrl = process.env.SUPABASE_INTERNAL_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const supabaseUrl =
+    process.env.SUPABASE_INTERNAL_URL ??
+    process.env.SUPABASE_PUBLIC_URL ??
+    process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const anonKey = process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-  return createServerClient(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+  return createServerClient(supabaseUrl, anonKey, {
     cookieOptions: { name: SUPABASE_AUTH_COOKIE },
     cookies: {
       getAll() {

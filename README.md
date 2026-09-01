@@ -46,7 +46,7 @@ de démonstration avec `npm run seed:owner:dev`. Par défaut :
 `owner.dev@caprice-ebene.com` / `CapriceOwner2026!`. Le script est idempotent et refuse
 d’écraser un autre Owner déjà présent dans le tenant.
 
-### Stack PostgreSQL/Supabase locale
+### Stack PostgreSQL/Supabase locale de développement
 
 La stack locale complète utilise `http://localhost:54321` afin de ne pas entrer en
 collision avec un autre proxy sur le port 80. Première installation :
@@ -65,6 +65,21 @@ docker compose --env-file .env.local -f docker-compose.local.yml run --rm toolin
 La dernière commande initialise, de façon idempotente, les 11 catégories et 81
 prestations de `docs/Catalogue_Prestations_Caprice_Ebene.md`, ainsi que cinq postes
 opérationnels de départ. Elle ne crée aucun client, rendez-vous ou membre du staff.
+
+### Installation sur le Mac du salon
+
+Le déploiement client ne construit pas les sources. Il télécharge les images GHCR
+versionnées avec `docker-compose.client.yml`, puis une seule commande crée les secrets,
+applique les migrations et initialise exactement un tenant, un Owner, son profil Staff,
+5 postes, 11 catégories et 81 prestations — sans Director ni donnée opérationnelle :
+
+```bash
+./scripts/client-install/install-macos.sh
+```
+
+La procédure de release, les prérequis macOS, les sauvegardes et les mises à jour sont
+documentés dans
+[`docs/guides/installation-locale-macos.md`](docs/guides/installation-locale-macos.md).
 
 La suite RLS s’exécute directement contre cette stack avec :
 

@@ -15,7 +15,10 @@ const ADMIN_PASSWORD = process.env.SEED_DEV_ADMIN_PASSWORD ?? "CapriceDev2026!";
 // NEXT_PUBLIC_SUPABASE_URL (http://localhost, joignable depuis le navigateur) résout
 // vers le conteneur lui-même, pas vers nginx. Non défini sur Supabase Cloud : aucun
 // changement de comportement là où ce script tournait déjà.
-const supabaseUrl = process.env.SUPABASE_INTERNAL_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseUrl =
+  process.env.SUPABASE_INTERNAL_URL ??
+  process.env.SUPABASE_PUBLIC_URL ??
+  process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const adminDatabaseUrl = process.env.ADMIN_DATABASE_URL ?? process.env.DIRECT_URL;
 

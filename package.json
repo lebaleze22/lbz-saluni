@@ -11,6 +11,8 @@
     "test:rls": "vitest run --config vitest.rls.config.ts",
     "seed:dev": "node scripts/seed-dev.mjs",
     "seed:owner:dev": "node scripts/seed-owner-dev.mjs",
+    "initialize:client": "node scripts/initialize-client.mjs",
+    "verify:client-install": "node scripts/verify-client-installation.mjs",
     "import:catalogue": "node scripts/import-catalogue-caprice.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

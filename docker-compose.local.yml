@@ -125,11 +125,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        # Doit être joignable depuis le NAVIGATEUR (inliné dans le bundle client par
-        # Next.js) : l'URL publique de nginx, jamais un nom de service Docker interne.
-        NEXT_PUBLIC_SUPABASE_URL: ${LOCAL_PUBLIC_URL:-http://localhost:54321}
-        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:?voir scripts/local-stack/generate-jwt-keys.mjs}
     container_name: lbz-local-core-api
     restart: unless-stopped
     depends_on:
@@ -148,6 +143,8 @@ services:
       DATABASE_URL: postgresql://app_runtime:${LOCAL_APP_RUNTIME_PASSWORD}@postgres:5432/postgres
       DIRECT_URL: postgresql://postgres:${LOCAL_POSTGRES_PASSWORD}@postgres:5432/postgres
       ADMIN_DATABASE_URL: postgresql://postgres:${LOCAL_POSTGRES_PASSWORD}@postgres:5432/postgres
+      SUPABASE_PUBLIC_URL: ${LOCAL_PUBLIC_URL:-http://localhost:54321}
+      SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:?voir scripts/local-stack/generate-jwt-keys.mjs}
       AUTH_JWT_SECRET: ${GOTRUE_JWT_SECRET:?GOTRUE_JWT_SECRET requis dans .env.local}
       # localhost partage ses cookies entre tous les ports/projets. Aligne la limite
       # HTTP de Node sur celle du proxy local pour accepter ces en-têtes en dev.
@@ -179,9 +176,6 @@ services:
       context: .
       dockerfile: Dockerfile
       target: builder
-      args:
-        NEXT_PUBLIC_SUPABASE_URL: ${LOCAL_PUBLIC_URL:-http://localhost:54321}
-        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:?voir scripts/local-stack/generate-jwt-keys.mjs}
     container_name: lbz-local-tooling
     profiles: ["tooling"]
     depends_on:
@@ -193,6 +187,8 @@ services:
       DATABASE_URL: postgresql://app_runtime:${LOCAL_APP_RUNTIME_PASSWORD}@postgres:5432/postgres
       DIRECT_URL: postgresql://postgres:${LOCAL_POSTGRES_PASSWORD}@postgres:5432/postgres
       ADMIN_DATABASE_URL: postgresql://postgres:${LOCAL_POSTGRES_PASSWORD}@postgres:5432/postgres
+      SUPABASE_PUBLIC_URL: ${LOCAL_PUBLIC_URL:-http://localhost:54321}
+      SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:?voir scripts/local-stack/generate-jwt-keys.mjs}
       AUTH_JWT_SECRET: ${GOTRUE_JWT_SECRET:?GOTRUE_JWT_SECRET requis dans .env.local}
     networks:
       - lbz-local

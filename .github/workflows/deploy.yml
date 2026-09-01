@@ -22,11 +22,8 @@
 #     VPS_APP_DIR        — chemin absolu, sur le VPS, du dossier contenant
 #                          docker-compose.yml + .env (ex. /opt/lbz)
 #
-#   Build de l'image (valeurs publiques Supabase, inlinées côté client — voir
-#   Dockerfile ; à créer aussi comme secrets de repo, mais leur absence ne bloque QUE la
-#   génération d'un bundle client correctement configuré, jamais le pipeline lui-même) :
-#     NEXT_PUBLIC_SUPABASE_URL
-#     NEXT_PUBLIC_SUPABASE_ANON_KEY
+#   La configuration Auth publique est désormais injectée au runtime par app/layout.tsx :
+#   aucun secret ni paramètre propre à un environnement n'est requis pendant le build.
 #
 # Aucun secret de base de données (DATABASE_URL, SUPABASE_SERVICE_ROLE_KEY) ne transite
 # par ce workflow ni par l'image : ils vivent uniquement dans le `.env` du VPS, lu au
@@ -109,9 +106,6 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          build-args: |
-            NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-            NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
   deploy:
     name: Deploy to VPS

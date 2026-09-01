@@ -6,9 +6,14 @@ loadEnv({ path: [".env.local", ".env"], quiet: true });
 
 const TENANT_NAME = "Caprice D'Ebène";
 const OWNER_NAME = process.env.SEED_DEV_OWNER_NAME ?? "Owner Caprice D'Ebène";
-const OWNER_EMAIL = (process.env.SEED_DEV_OWNER_EMAIL ?? "owner.dev@caprice-ebene.com").toLowerCase();
+const OWNER_EMAIL = (
+  process.env.SEED_DEV_OWNER_EMAIL ?? "owner.dev@caprice-ebene.com"
+).toLowerCase();
 const OWNER_PASSWORD = process.env.SEED_DEV_OWNER_PASSWORD ?? "CapriceOwner2026!";
-const supabaseUrl = process.env.SUPABASE_INTERNAL_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseUrl =
+  process.env.SUPABASE_INTERNAL_URL ??
+  process.env.SUPABASE_PUBLIC_URL ??
+  process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const adminDatabaseUrl = process.env.ADMIN_DATABASE_URL ?? process.env.DIRECT_URL;
 

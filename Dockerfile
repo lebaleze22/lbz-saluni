@@ -47,15 +47,9 @@ RUN apk add --no-cache openssl libc6-compat
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# NEXT_PUBLIC_* est inliné dans le bundle CLIENT au moment du build, pas au runtime —
-# doit donc être fourni comme build arg (docker-compose.yml -> build.args, ou
-# --build-arg en CI), jamais seulement comme variable d'environnement du conteneur.
-# Ce sont des clés publiques (anon key Supabase), sans risque à faire transiter par les
-# arguments de build / les layers de l'image.
-ARG NEXT_PUBLIC_SUPABASE_URL
-ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
-ENV NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
-ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+# L'URL publique et la clé anonyme Auth sont injectées au runtime par app/layout.tsx.
+# Elles ne sont plus figées dans le bundle : la même image peut donc être installée sur
+# plusieurs Mac avec des secrets GoTrue différents.
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Prisma valide les URLs de datasource dès l'import de certains modules pendant la

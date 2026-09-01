@@ -17,7 +17,7 @@ import { config as loadEnv } from "dotenv";
 
 loadEnv({ path: [".env.local", ".env"], quiet: true });
 
-const TENANT_NAME = "Caprice D'Ebène";
+const TENANT_NAME = process.env.CLIENT_TENANT_NAME?.trim() || "Caprice D'Ebène";
 const JOB_TITLES = [
   "Barbier / Barbière",
   "Coiffeur / Coiffeuse",
