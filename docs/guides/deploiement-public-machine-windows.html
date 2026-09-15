@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Complete instructions for hosting the SALUNI test environment on a Windows machine while development continues separately."
+    />
+    <title>SALUNI · Public test deployment on Windows</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #1c1917;
+        --muted: #57534e;
+        --paper: #fafaf9;
+        --card: #ffffff;
+        --line: #d6d3d1;
+        --green: #064e3b;
+        --green-soft: #d1fae5;
+        --amber: #92400e;
+        --amber-soft: #fef3c7;
+        --blue-soft: #dbeafe;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        line-height: 1.6;
+      }
+      main {
+        width: min(1040px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 48px 0 80px;
+      }
+      header,
+      section {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: var(--card);
+        padding: clamp(22px, 4vw, 40px);
+        box-shadow: 0 12px 35px rgb(28 25 23 / 6%);
+      }
+      section {
+        margin-top: 22px;
+      }
+      h1,
+      h2,
+      h3 {
+        line-height: 1.2;
+      }
+      h1 {
+        margin: 8px 0 12px;
+        font-size: clamp(2rem, 5vw, 3.6rem);
+      }
+      h2 {
+        margin: 0 0 18px;
+        color: var(--green);
+        font-size: 1.55rem;
+      }
+      h3 {
+        margin: 24px 0 8px;
+      }
+      p,
+      li {
+        color: var(--muted);
+      }
+      .eyebrow {
+        margin: 0;
+        color: var(--green);
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+      .status,
+      .note,
+      .warning {
+        border-radius: 12px;
+        padding: 14px 16px;
+      }
+      .status,
+      .note {
+        background: var(--green-soft);
+        color: var(--green);
+      }
+      .warning {
+        background: var(--amber-soft);
+        color: var(--amber);
+      }
+      code {
+        border-radius: 5px;
+        background: #f5f5f4;
+        padding: 0.12em 0.35em;
+        color: #292524;
+      }
+      pre {
+        overflow-x: auto;
+        border-radius: 12px;
+        background: #1c1917;
+        padding: 18px;
+        color: #f5f5f4;
+        line-height: 1.5;
+      }
+      pre code {
+        background: transparent;
+        padding: 0;
+        color: inherit;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        border-bottom: 1px solid var(--line);
+        padding: 12px;
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        background: #f5f5f4;
+      }
+      .flow {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        gap: 12px;
+        margin-top: 20px;
+      }
+      .flow div {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 14px;
+        background: var(--blue-soft);
+        color: #1e3a8a;
+        font-weight: 700;
+      }
+      ol > li,
+      ul > li {
+        margin: 7px 0;
+      }
+      a {
+        color: #047857;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">SALUNI · Test deployment · Windows</p>
+        <h1>Host SALUNI publicly and continue development safely</h1>
+        <p>
+          This guide installs the stable <code>client-deployment</code> branch in a separate
+          directory. Docker keeps that deployed snapshot running while unfinished features are
+          developed in the original repository.
+        </p>
+        <p class="status">
+          The deployment is self-contained: PostgreSQL, authentication, SALUNI, nginx, and the
+          public HTTPS tunnel all run on your machine. No Supabase Cloud project is required.
+        </p>
+      </header>
+
+      <section>
+        <h2>1. How deployment and development stay separate</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Directory</th>
+              <th>Branch</th>
+              <th>Purpose</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>C:\SALUNI\server</code></td>
+              <td><code>client-deployment</code></td>
+              <td>The public test installation. Update it only with reviewed deployment commits.</td>
+            </tr>
+            <tr>
+              <td>Your existing project directory</td>
+              <td>A development or feature branch</td>
+              <td>Continue building and testing unfinished features without changing the server.</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="flow">
+          <div>Feature branch<br />active development</div>
+          <div>Tests and review<br />approved changes</div>
+          <div>client-deployment<br />stable snapshot</div>
+          <div>Docker server<br />public test URL</div>
+        </div>
+        <p class="note">
+          Editing files in the development directory does not alter the running Docker image. The
+          public test changes only when you intentionally update and rebuild the server directory.
+        </p>
+      </section>
+
+      <section>
+        <h2>2. Requirements</h2>
+        <ul>
+          <li>Windows 10 or Windows 11 with current updates.</li>
+          <li>Git installed and available in PowerShell.</li>
+          <li>Docker Desktop installed, started, and configured to use Linux containers.</li>
+          <li>An Internet connection that remains available while people test SALUNI.</li>
+          <li>The machine configured not to sleep while acting as the server.</li>
+          <li>At least 4 GB of free memory and adequate disk space for images and database backups.</li>
+        </ul>
+        <p>
+          Verify the two required commands in PowerShell:
+        </p>
+        <pre><code>git --version
+docker info</code></pre>
+      </section>
+
+      <section>
+        <h2>3. First installation</h2>
+        <h3>3.1 Create a dedicated server checkout</h3>
+        <p>Run PowerShell as your normal Windows user:</p>
+        <pre><code>New-Item -ItemType Directory -Force C:\SALUNI
+Set-Location C:\SALUNI
+
+git clone --branch client-deployment --single-branch `
+  https://github.com/lebaleze22/lbz-saluni.git server
+
+Set-Location C:\SALUNI\server</code></pre>
+        <p>
+          If the GitHub repository is private, Git will request your GitHub credentials or personal
+          access token during cloning.
+        </p>
+
+        <h3>3.2 Run the installer</h3>
+        <pre><code>powershell -ExecutionPolicy Bypass `
+  -File scripts/server/install-windows.ps1</code></pre>
+        <p>The installer performs the following actions:</p>
+        <ol>
+          <li>Generates strong PostgreSQL, runtime-role, and authentication secrets.</li>
+          <li>Writes the secrets to the ignored <code>.env.server</code> file.</li>
+          <li>Builds SALUNI from the checked-out deployment source.</li>
+          <li>Starts PostgreSQL and the local authentication service.</li>
+          <li>Applies the Prisma migrations and configures the restricted database role.</li>
+          <li>Starts SALUNI, nginx, and Cloudflare Tunnel.</li>
+          <li>Asks for the salon name and first Owner account.</li>
+          <li>Imports the initial catalogue and verifies the installation.</li>
+          <li>Prints the public HTTPS login address.</li>
+        </ol>
+        <p class="warning">
+          Keep <code>.env.server</code> private. It contains database and authentication secrets. It
+          is excluded by Git and must never be sent by email or committed.
+        </p>
+      </section>
+
+      <section>
+        <h2>4. Open and share the public application</h2>
+        <p>The installer prints an address similar to:</p>
+        <pre><code>https://random-words.trycloudflare.com/login</code></pre>
+        <p>To retrieve it later:</p>
+        <pre><code>Set-Location C:\SALUNI\server
+
+docker compose --env-file .env.server `
+  -f docker-compose.server.yml `
+  logs cloudflared | Select-String "trycloudflare.com"</code></pre>
+        <p>
+          The application is publicly reachable by anyone who has this URL. Authentication still
+          requires a valid SALUNI account. Only the Owner can create Director or staff accounts.
+        </p>
+        <p class="warning">
+          A Quick Tunnel is intended for testing. Its generated hostname can change if the tunnel
+          container is recreated. A domain and named Cloudflare Tunnel will provide a permanent
+          address later.
+        </p>
+      </section>
+
+      <section>
+        <h2>5. Daily operations</h2>
+        <h3>Check service status</h3>
+        <pre><code>Set-Location C:\SALUNI\server
+
+docker compose --env-file .env.server `
+  -f docker-compose.server.yml ps</code></pre>
+
+        <h3>View recent logs</h3>
+        <pre><code>docker compose --env-file .env.server `
+  -f docker-compose.server.yml `
+  logs --tail 200 core-api nginx gotrue cloudflared</code></pre>
+
+        <h3>Stop the test server</h3>
+        <pre><code>docker compose --env-file .env.server `
+  -f docker-compose.server.yml stop</code></pre>
+
+        <h3>Start it again</h3>
+        <pre><code>docker compose --env-file .env.server `
+  -f docker-compose.server.yml up -d</code></pre>
+        <p>
+          After restarting the tunnel, retrieve the current public URL from its logs before sharing
+          it. Docker restart policies restart the services automatically after Docker Desktop starts.
+        </p>
+      </section>
+
+      <section>
+        <h2>6. Continue working on remaining features</h2>
+        <p>Use the original development directory, not <code>C:\SALUNI\server</code>.</p>
+        <pre><code>Set-Location "C:\Users\LeBaleze\Documents\Personal\MyApps\lbz_Saluni"
+
+git switch whatsapp-development-20260914
+git status</code></pre>
+        <p>
+          Future work remains on development branches. When a group of changes is ready for public
+          testing, review it, run the full checks, and copy only the approved changes into
+          <code>client-deployment</code>. The server does not update automatically.
+        </p>
+      </section>
+
+      <section>
+        <h2>7. Deploy an approved update</h2>
+        <p>After the approved changes have been pushed to <code>client-deployment</code>:</p>
+        <pre><code>Set-Location C:\SALUNI\server
+
+git pull --ff-only origin client-deployment
+
+powershell -ExecutionPolicy Bypass `
+  -File scripts/server/install-windows.ps1 `
+  -SkipInitialization</code></pre>
+        <p>
+          The update preserves <code>.env.server</code> and the PostgreSQL Docker volume, applies new
+          migrations, rebuilds the application, and prints the current public URL. The
+          <code>-SkipInitialization</code> option prevents the installer from asking for or recreating
+          the first Owner.
+        </p>
+      </section>
+
+      <section>
+        <h2>8. Back up the database</h2>
+        <p>Create a directory outside the Git repository and produce a PostgreSQL dump:</p>
+        <pre><code>New-Item -ItemType Directory -Force C:\SALUNI\backups
+Set-Location C:\SALUNI\server
+
+docker compose --env-file .env.server `
+  -f docker-compose.server.yml `
+  exec -T postgres pg_dump -U postgres -d postgres -Fc `
+  -f /tmp/saluni-backup.dump
+
+$stamp = Get-Date -Format "yyyyMMdd-HHmmss"
+docker cp saluni-server-postgres:/tmp/saluni-backup.dump `
+  "C:\SALUNI\backups\saluni-$stamp.dump"</code></pre>
+        <p>
+          Keep at least one additional encrypted copy on another disk. A Docker volume protects data
+          across normal container rebuilds, but it does not replace an external backup.
+        </p>
+      </section>
+
+      <section>
+        <h2>9. Troubleshooting</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Problem</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>Docker Desktop is not running</code></td>
+              <td>Start Docker Desktop, wait until the engine is ready, and rerun the installer.</td>
+            </tr>
+            <tr>
+              <td>Port 8080 is already occupied</td>
+              <td>Change <code>SALUNI_HTTP_PORT</code> in <code>.env.server</code>, then rerun with <code>-SkipInitialization</code>.</td>
+            </tr>
+            <tr>
+              <td>No public URL appears</td>
+              <td>Inspect <code>docker compose --env-file .env.server -f docker-compose.server.yml logs cloudflared</code> and verify Internet access.</td>
+            </tr>
+            <tr>
+              <td>The public URL shows a gateway error</td>
+              <td>Check <code>docker compose --env-file .env.server -f docker-compose.server.yml ps</code>, then inspect the <code>core-api</code>, <code>nginx</code>, and <code>gotrue</code> logs.</td>
+            </tr>
+            <tr>
+              <td>The site disappears when the machine is idle</td>
+              <td>Disable Windows sleep while plugged in and enable Docker Desktop startup at sign-in.</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>10. Current test boundary</h2>
+        <ul>
+          <li>The public test runs only the code committed to <code>client-deployment</code>.</li>
+          <li>The unfinished messaging integration is absent from the deployed branch.</li>
+          <li>The Quick Tunnel provides a temporary public address and no availability guarantee.</li>
+          <li>The server is available only while the Windows machine, Internet, and Docker are running.</li>
+          <li>A permanent domain, named tunnel, monitoring, and automated off-machine backups belong to the production-hardening stage.</li>
+        </ul>
+      </section>
+    </main>
+  </body>
+</html>
