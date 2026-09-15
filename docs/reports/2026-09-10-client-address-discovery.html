@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SALUNI · Client addresses and discovery sources</title>
+    <style>
+      body {
+        margin: 0;
+        background: #f5f4ed;
+        color: #193d2d;
+        font:
+          16px/1.7 system-ui,
+          sans-serif;
+      }
+      main {
+        max-width: 950px;
+        margin: auto;
+        padding: 32px 24px;
+      }
+      header {
+        background: #193d2d;
+        color: white;
+        padding: 28px;
+        border-radius: 16px;
+      }
+      section {
+        background: white;
+        padding: 24px;
+        margin-top: 20px;
+        border-radius: 12px;
+      }
+      th,
+      td {
+        padding: 12px;
+        border-bottom: 1px solid #ddd;
+        text-align: left;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+      a {
+        color: #287151;
+      }
+      code {
+        overflow-wrap: anywhere;
+      }
+      @media print {
+        body {
+          background: white;
+        }
+        section {
+          break-inside: avoid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p>SALUNI · Approved feature delivery · 10 September 2026</p>
+        <h1>Client addresses and discovery sources</h1>
+        <p>Address details, how a client discovered the salon, and who recommended it.</p>
+      </header>
+      <section>
+        <h2>Using the fields</h2>
+        <p>
+          Open <a href="http://localhost:54321/clients">Clients</a> and add or edit a client. The
+          new <strong>Adresse</strong> section contains city, neighbourhood and additional
+          directions. All fields are optional so existing records remain usable.
+        </p>
+        <p>
+          Under <strong>Comment le client a connu le salon</strong>, choose the source and add
+          details such as the social network, advertisement or search used.
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>Source</th>
+              <th>Import code</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Unknown / not recorded</td>
+              <td>unknown</td>
+            </tr>
+            <tr>
+              <td>Recommendation</td>
+              <td>recommendation</td>
+            </tr>
+            <tr>
+              <td>Google / search</td>
+              <td>search</td>
+            </tr>
+            <tr>
+              <td>Social media</td>
+              <td>social_media</td>
+            </tr>
+            <tr>
+              <td>Passing the salon</td>
+              <td>walk_by</td>
+            </tr>
+            <tr>
+              <td>Advertisement</td>
+              <td>advertisement</td>
+            </tr>
+            <tr>
+              <td>Other</td>
+              <td>other</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          For a recommendation, either select an existing client or enter the name of another
+          person. The two choices are mutually exclusive. Selecting a different discovery source
+          clears the referral relationship when the profile is saved.
+        </p>
+      </section>
+      <section>
+        <h2>Directory and dossier</h2>
+        <p>
+          The directory includes a Source column and filter, which can be combined with search,
+          active/archived status and visit segments. Each dossier displays the address, discovery
+          source, details and recommender. Linked recommenders open their own client dossier.
+          Archived dossiers retain these details.
+        </p>
+        <p>
+          The quick register remains focused on visit entry. Complete address and discovery
+          information in the client dossier. The existing name + phone + email + sex duplicate rule
+          is unchanged; address and discovery fields do not create another identity.
+        </p>
+      </section>
+      <section>
+        <h2>CSV and Excel</h2>
+        <p>
+          Download the updated template from the import/export panel. New columns are
+          <strong
+            >Ville, Quartier, Adresse, Source, Détails source, ID client recommandant, Nom
+            recommandant</strong
+          >. Source codes above and their French interface labels are accepted. Older files
+          containing only the original columns remain supported.
+        </p>
+        <p>
+          A recommender ID must belong to an existing client in the current salon. It is not
+          resolved by name and cannot refer to a new row in the same import. When transferring data
+          from another salon, use the person's name instead of the foreign ID. Supply either a
+          recommender ID or a name, and set Source to recommendation.
+        </p>
+        <p>
+          Imports continue to skip exact duplicates without overwriting existing profiles. To add
+          addresses to clients already in the directory, edit their dossiers; re-importing matching
+          clients does not update them.
+        </p>
+      </section>
+      <section>
+        <h2>Integrity and delivery</h2>
+        <p>
+          Database constraints prevent self-referrals, references to another salon, simultaneous
+          linked/free-text recommenders and referral details on a non-recommendation source. The
+          additive migration is <code>20260909150000_client_address_discovery</code>. Existing
+          clients receive the unknown source by default.
+        </p>
+        <p id="delivery">
+          Delivered to http://localhost:54321 on 10 September 2026. Passed: 65 unit tests, 20
+          database tests, 11 Auth/RLS tests, and 20 authenticated HTTP checks. Production and Docker
+          builds passed lint and TypeScript validation. Live Owner checks confirmed the address and
+          discovery form, source filtering, the updated Excel template, and a UTF-8 French CSV
+          preview without writing a client record.
+        </p>
+        <p>
+          All 27 migrations applied successfully to the disposable database. The local database was
+          backed up to <code>docs/backups/saluni-before-client-address-20260910.dump</code> before
+          the additive migration was applied. The app and proxy containers were recreated and are
+          healthy. Visual browser verification remains unavailable.
+        </p>
+        <p>
+          Product sales were subsequently approved and delivered. See the
+          <a href="2026-09-10-product-sales.html">product sales delivery report</a>.
+        </p>
+        <p>
+          <a href="2026-09-09-client-import-dossier.html">Import and dossier guide</a> ·
+          <a href="../documentation-preferences.html"
+            >Documentation and feature workflow preferences</a
+          >
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

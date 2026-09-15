@@ -11,12 +11,14 @@ import {
   UserRound,
   UsersRound,
   WalletCards,
+  ShoppingBag,
 } from "lucide-react";
 import { getReportData } from "@/lib/db/reports";
 import { AccessDeniedError } from "@/lib/db/auth";
-import { todayInDouala } from "@/lib/dates";
+import { addCalendarDays, todayInDouala } from "@/lib/dates";
 import { formatFcfa } from "@/lib/format";
 import { reportFiltersSchema } from "@/lib/validation/reports";
+import { formatQuantity } from "@/lib/inventory/quantities";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +27,13 @@ const PERIODS = [
   { value: "month", label: "Mensuel" },
   { value: "quarter", label: "Trimestriel" },
 ] as const;
+
+function shiftReferenceDate(date: string, period: "week" | "month" | "quarter", amount: number) {
+  if (period === "week") return addCalendarDays(date, amount * 7);
+  const value = new Date(`${date}T12:00:00Z`);
+  value.setUTCMonth(value.getUTCMonth() + amount * (period === "month" ? 1 : 3));
+  return value.toISOString().slice(0, 10);
+}
 
 export default async function ReportsPage({
   searchParams,
@@ -58,6 +67,7 @@ export default async function ReportsPage({
 
   const query = new URLSearchParams({ period: filters.period, date: filters.date }).toString();
   const topAmount = Math.max(...report.summary.services.map((item) => item.amount), 1);
+  const topProductAmount = Math.max(...report.summary.products.map((item) => item.amount), 1);
 
   return (
     <main className="w-full px-4 py-8 sm:px-6 lg:px-8">
@@ -121,14 +131,73 @@ export default async function ReportsPage({
             <CalendarRange className="size-4" /> Afficher
           </button>
         </form>
+        <div className="mt-3 flex flex-wrap justify-between gap-2 border-t border-stone-100 pt-3 text-sm font-bold">
+          <Link
+            href={`/reports?${new URLSearchParams({ period: filters.period, date: shiftReferenceDate(filters.date, filters.period, -1) })}`}
+            className="text-emerald-800 underline"
+          >
+            ← Période précédente
+          </Link>
+          <Link
+            href={`/reports?${new URLSearchParams({ period: filters.period, date: shiftReferenceDate(filters.date, filters.period, 1) })}`}
+            className="text-emerald-800 underline"
+          >
+            Période suivante →
+          </Link>
+        </div>
       </section>
 
-      <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+      <section className="mt-6 rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+        <h2 className="font-black">Résultats des rendez-vous</h2>
+        <div className="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          {[
+            ["Planifiés", report.summary.appointmentOutcomes.scheduled],
+            ["Confirmés", report.summary.appointmentOutcomes.confirmed],
+            ["Arrivés", report.summary.appointmentOutcomes.arrived],
+            ["Terminés", report.summary.appointmentOutcomes.completed],
+            ["Annulés", report.summary.appointmentOutcomes.cancelled],
+            ["Absents", report.summary.appointmentOutcomes.no_show],
+          ].map(([label, value]) => (
+            <div key={label} className="rounded-xl bg-stone-50 p-4">
+              <p className="text-xs text-stone-500">{label}</p>
+              <p className="text-2xl font-black">{value}</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 grid gap-3 border-t border-stone-100 pt-4 sm:grid-cols-4">
+          <div>
+            <p className="text-xs text-stone-500">Rendez-vous non payés</p>
+            <p className="text-xl font-black">{report.summary.bookingPayments.unpaid}</p>
+          </div>
+          <div>
+            <p className="text-xs text-stone-500">Partiellement payés</p>
+            <p className="text-xl font-black">{report.summary.bookingPayments.partial}</p>
+          </div>
+          <div>
+            <p className="text-xs text-stone-500">Payés</p>
+            <p className="text-xl font-black">{report.summary.bookingPayments.paid}</p>
+          </div>
+          <div>
+            <p className="text-xs text-stone-500">Solde restant</p>
+            <p className="text-xl font-black">
+              {formatFcfa(report.summary.bookingPayments.outstandingAmount)}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-7">
         {[
           {
             label: "Chiffre d’affaires",
             value: formatFcfa(report.summary.totalRevenue),
-            detail: `${report.summary.visitVolume} visite(s)`,
+            detail: `${formatFcfa(report.summary.serviceRevenue)} prestations réalisées · ${formatFcfa(report.summary.retailRevenue)} produits`,
+            icon: WalletCards,
+          },
+          {
+            label: "Encaissements",
+            value: formatFcfa(report.summary.totalCashReceived),
+            detail: `${formatFcfa(report.summary.advanceReceipts)} d’acomptes reçus`,
             icon: WalletCards,
           },
           {
@@ -148,6 +217,12 @@ export default async function ReportsPage({
             value: String(report.summary.serviceVolume),
             detail: "volume total",
             icon: Scissors,
+          },
+          {
+            label: "Ventes produits",
+            value: formatFcfa(report.summary.retailRevenue),
+            detail: `${report.summary.retailSaleVolume} reçu(s) · ${report.summary.retailQuantitiesByUnit.map((item) => `${formatQuantity(item.quantity)} ${item.unit}`).join(" · ") || "aucune quantité"}`,
+            icon: ShoppingBag,
           },
           {
             label: "Nouveaux clients",
@@ -262,6 +337,37 @@ export default async function ReportsPage({
                     <div
                       className="h-full rounded-full bg-amber-500"
                       style={{ width: `${Math.round((item.amount / topAmount) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+        <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm lg:col-span-2">
+          <div className="mb-5 flex items-center gap-2">
+            <ShoppingBag className="size-5 text-emerald-800" />
+            <h2 className="font-black">Par produit vendu</h2>
+          </div>
+          {report.summary.products.length === 0 ? (
+            <p className="text-sm text-stone-500">Aucune vente de produit pour cette période.</p>
+          ) : (
+            <div className="grid gap-x-8 gap-y-4 md:grid-cols-2">
+              {report.summary.products.map((item) => (
+                <div key={item.id}>
+                  <div className="mb-1.5 flex items-baseline justify-between gap-4 text-sm">
+                    <span className="font-semibold text-stone-700">
+                      {item.label}{" "}
+                      <span className="font-normal text-stone-400">
+                        {item.saleCount} vente(s) · {formatQuantity(item.quantity)} {item.unit}
+                      </span>
+                    </span>
+                    <span className="font-black">{formatFcfa(item.amount)}</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-stone-100">
+                    <div
+                      className="h-full rounded-full bg-emerald-700"
+                      style={{ width: `${Math.round((item.amount / topProductAmount) * 100)}%` }}
                     />
                   </div>
                 </div>

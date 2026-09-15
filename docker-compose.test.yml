@@ -1,0 +1,40 @@
+# Disposable integration stack. Invoked only by scripts/test-database.mjs with a
+# unique project name, random credentials and loopback-only ephemeral ports.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${SALUNI_QA_PASSWORD:?Test runner required}
+      POSTGRES_DB: saluni_qa
+    ports:
+      - "127.0.0.1::5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    volumes:
+      - ./docker/local/postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d saluni_qa"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  gotrue:
+    image: supabase/gotrue:v2.170.0
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1::9999"
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: "9999"
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://postgres:${SALUNI_QA_PASSWORD}@postgres:5432/saluni_qa?options=-c%20search_path=auth
+      API_EXTERNAL_URL: http://localhost/auth/v1
+      GOTRUE_SITE_URL: http://localhost
+      GOTRUE_DISABLE_SIGNUP: "true"
+      GOTRUE_JWT_SECRET: ${SALUNI_QA_JWT_SECRET:?Test runner required}
+      GOTRUE_JWT_EXP: "3600"
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_MAILER_AUTOCONFIRM: "true"

@@ -16,6 +16,9 @@
 # production
 /build
 
+# Local database backups (contain private salon data)
+/docs/backups/
+
 # misc
 .DS_Store
 *.pem
@@ -29,6 +32,7 @@ yarn-error.log*
 .env
 .env*.local
 .env.client.local
+.env.server
 
 # vercel
 .vercel

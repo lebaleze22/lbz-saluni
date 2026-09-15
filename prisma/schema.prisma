@@ -30,12 +30,17 @@ model Tenant {
   jobTitles           JobTitle[]
   staffJobTitles      StaffJobTitle[]
   clients             Client[]
+  clientActivities    ClientActivity[]
+  retailSales         RetailSale[]
   serviceCategories   ServiceCategory[]
   services            Service[]
   appointments        Appointment[]
   appointmentServices AppointmentService[]
   payments            Payment[]
   expenses            Expense[]
+  products            Product[]
+  serviceProducts     ServiceProduct[]
+  stockMovements      StockMovement[]
 
   @@map("tenants")
 }
@@ -51,11 +56,9 @@ enum UserRole {
 
 // ---------------------------------------------------------------------------
 // Users — comptes applicatifs, un-à-un avec auth.users (Supabase Auth).
-// Pour l'Étape 1, seul salon_admin saisit des données ; manager/staff
-// sont réservés pour une évolution future (cf. Etape_01_Registre_Activite.md).
-// `owner` (cf. docs/architecture/012-role-owner.md) est un rôle de supervision
-// globale au-dessus de salon_admin ("Director"), pas un rôle opérationnel — au
-// plus un par tenant, provisionné par script comme le compte Director actuel.
+// Owner et salon_admin (Director) gèrent les opérations du salon, dont le CRM
+// et le stock. Owner administre également l'équipe et les postes.
+// Les espaces manager/staff restent réservés à une évolution future.
 // ---------------------------------------------------------------------------
 model User {
   id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // = auth.users.id (Supabase)
@@ -69,9 +72,12 @@ model User {
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @default(now()) @updatedAt @map("updated_at")
 
-  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  appointments Appointment[] @relation("AppointmentCreatedBy")
-  staffProfile Staff?
+  tenant           Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  appointments     Appointment[]    @relation("AppointmentCreatedBy")
+  staffProfile     Staff?
+  stockMovements   StockMovement[]
+  clientActivities ClientActivity[]
+  retailSales      RetailSale[]
 
   @@unique([tenantId, id]) // cible de la FK composite staff(tenant_id, user_id) — cf. docs/architecture/013-job-title-vs-system-role.md
   @@index([tenantId])
@@ -212,27 +218,61 @@ model StaffJobTitle {
 }
 
 // ---------------------------------------------------------------------------
-// Clients — saisie à la volée, dédoublonnage best-effort par nom (cf. spec).
+// Clients — fiche CRM et saisie rapide. Les visites réutilisent une identité
+// explicitement choisie ou les quatre attributs concordants, jamais le seul téléphone.
 // ---------------------------------------------------------------------------
 model Client {
-  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId  String    @map("tenant_id") @db.Uuid
-  name      String
-  phone     String?
-  sex       Sex? // optionnel : cohérent avec la saisie rapide sans friction pour les clients
-  active    Boolean   @default(true)
-  isDeleted Boolean   @default(false) @map("is_deleted")
-  deletedAt DateTime? @map("deleted_at")
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at")
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId           String    @map("tenant_id") @db.Uuid
+  name               String
+  phone              String?
+  email              String?
+  notes              String?   @db.Text
+  preferences        String?   @db.Text
+  allergies          String?   @db.Text
+  city               String?
+  neighbourhood      String?
+  addressDetails     String?   @map("address_details")
+  discoverySource    String    @default("unknown") @map("discovery_source")
+  discoveryDetails   String?   @map("discovery_details")
+  referredByClientId String?   @map("referred_by_client_id") @db.Uuid
+  referrerName       String?   @map("referrer_name")
+  sex                Sex? // optionnel : cohérent avec la saisie rapide sans friction pour les clients
+  active             Boolean   @default(true)
+  isDeleted          Boolean   @default(false) @map("is_deleted")
+  deletedAt          DateTime? @map("deleted_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at")
 
   tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   appointments Appointment[]
+
+  activities       ClientActivity[]
+  referredByClient Client?          @relation("ClientReferrals", fields: [tenantId, referredByClientId], references: [tenantId, id], onDelete: Restrict)
+  referredClients  Client[]         @relation("ClientReferrals")
+  retailSales      RetailSale[]
 
   @@unique([tenantId, id])
   @@index([tenantId])
   @@index([tenantId, name])
   @@map("clients")
+}
+
+model ClientActivity {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  clientId   String   @map("client_id") @db.Uuid
+  recordedBy String   @map("recorded_by") @db.Uuid
+  kind       String
+  body       String   @db.Text
+  occurredAt DateTime @map("occurred_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  client     Client   @relation(fields: [tenantId, clientId], references: [tenantId, id], onDelete: Restrict)
+  author     User     @relation(fields: [tenantId, recordedBy], references: [tenantId, id], onDelete: Restrict)
+
+  @@index([tenantId, clientId, occurredAt])
+  @@map("client_activities")
 }
 
 // ---------------------------------------------------------------------------
@@ -280,6 +320,7 @@ model Service {
   tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   category            ServiceCategory?     @relation(fields: [tenantId, categoryId], references: [tenantId, id], onDelete: Restrict)
   appointmentServices AppointmentService[]
+  products            ServiceProduct[]
 
   @@unique([tenantId, id])
   @@index([tenantId])
@@ -294,22 +335,37 @@ enum AppointmentSource {
   @@map("appointment_source")
 }
 
+enum AppointmentStatus {
+  scheduled
+  confirmed
+  arrived
+  completed
+  cancelled
+  no_show
+
+  @@map("appointment_status")
+}
+
 // ---------------------------------------------------------------------------
 // Appointments — une visite = un enregistrement du registre.
 // ---------------------------------------------------------------------------
 model Appointment {
-  id          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId    String            @map("tenant_id") @db.Uuid
-  clientId    String            @map("client_id") @db.Uuid
-  staffId     String            @map("staff_id") @db.Uuid
-  createdById String            @map("created_by") @db.Uuid
-  source      AppointmentSource
-  startTime   DateTime          @map("start_time")
-  active      Boolean           @default(true)
-  isDeleted   Boolean           @default(false) @map("is_deleted")
-  deletedAt   DateTime?         @map("deleted_at")
-  createdAt   DateTime          @default(now()) @map("created_at")
-  updatedAt   DateTime          @default(now()) @updatedAt @map("updated_at")
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String            @map("tenant_id") @db.Uuid
+  clientId        String            @map("client_id") @db.Uuid
+  staffId         String            @map("staff_id") @db.Uuid
+  createdById     String            @map("created_by") @db.Uuid
+  source          AppointmentSource
+  startTime       DateTime          @map("start_time")
+  durationMinutes Int               @default(60) @map("duration_minutes")
+  status          AppointmentStatus @default(completed)
+  notes           String?
+  completedAt     DateTime?         @map("completed_at")
+  active          Boolean           @default(true)
+  isDeleted       Boolean           @default(false) @map("is_deleted")
+  deletedAt       DateTime?         @map("deleted_at")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @default(now()) @updatedAt @map("updated_at")
 
   tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   client              Client               @relation(fields: [tenantId, clientId], references: [tenantId, id], onDelete: Restrict)
@@ -317,11 +373,13 @@ model Appointment {
   createdBy           User                 @relation("AppointmentCreatedBy", fields: [tenantId, createdById], references: [tenantId, id], onDelete: Restrict)
   appointmentServices AppointmentService[]
   payments            Payment[]
+  stockMovements      StockMovement[]
 
   @@unique([tenantId, id])
   @@index([tenantId])
   @@index([tenantId, startTime])
   @@index([tenantId, staffId])
+  @@index([tenantId, status, startTime])
   @@map("appointments")
 }
 
@@ -358,6 +416,13 @@ enum PaymentMethod {
   @@map("payment_method")
 }
 
+enum PaymentPurpose {
+  advance
+  settlement
+
+  @@map("payment_purpose")
+}
+
 // ---------------------------------------------------------------------------
 // Payments — règlement d'une visite. Montant total = somme des lignes de
 // service (cf. spec). Pas de paiement en ligne à cette étape : Mobile Money
@@ -365,21 +430,24 @@ enum PaymentMethod {
 // d'agrégateur (cf. docs/architecture/003-mobile-money.md).
 // ---------------------------------------------------------------------------
 model Payment {
-  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId      String        @map("tenant_id") @db.Uuid
-  appointmentId String        @map("appointment_id") @db.Uuid
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String         @map("tenant_id") @db.Uuid
+  appointmentId String         @map("appointment_id") @db.Uuid
   amount        Int // FCFA, entier
   method        PaymentMethod
-  active        Boolean       @default(true)
-  isDeleted     Boolean       @default(false) @map("is_deleted")
-  deletedAt     DateTime?     @map("deleted_at")
-  createdAt     DateTime      @default(now()) @map("created_at")
+  purpose       PaymentPurpose @default(settlement)
+  receivedAt    DateTime       @default(now()) @map("received_at")
+  active        Boolean        @default(true)
+  isDeleted     Boolean        @default(false) @map("is_deleted")
+  deletedAt     DateTime?      @map("deleted_at")
+  createdAt     DateTime       @default(now()) @map("created_at")
 
   tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   appointment Appointment @relation(fields: [tenantId, appointmentId], references: [tenantId, id], onDelete: Cascade)
 
   @@index([tenantId])
   @@index([appointmentId])
+  @@index([tenantId, receivedAt])
   @@map("payments")
 }
 
@@ -411,4 +479,114 @@ model Expense {
   @@index([tenantId])
   @@index([tenantId, occurredAt])
   @@map("expenses")
+}
+
+model Product {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId          String    @map("tenant_id") @db.Uuid
+  name              String
+  sku               String?
+  unit              String    @default("unité")
+  costPrice         Int       @default(0) @map("cost_price")
+  salePrice         Int       @default(0) @map("sale_price")
+  stockQuantity     Decimal   @default(0) @map("stock_quantity") @db.Decimal(12, 3)
+  lowStockThreshold Decimal   @default(0) @map("low_stock_threshold") @db.Decimal(12, 3)
+  active            Boolean   @default(true)
+  isDeleted         Boolean   @default(false) @map("is_deleted")
+  deletedAt         DateTime? @map("deleted_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  services    ServiceProduct[]
+  movements   StockMovement[]
+  retailSales RetailSale[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, sku])
+  @@index([tenantId, name])
+  @@map("products")
+}
+
+model ServiceProduct {
+  id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String  @map("tenant_id") @db.Uuid
+  serviceId String  @map("service_id") @db.Uuid
+  productId String  @map("product_id") @db.Uuid
+  quantity  Decimal @db.Decimal(12, 3)
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  service Service @relation(fields: [tenantId, serviceId], references: [tenantId, id], onDelete: Restrict)
+  product Product @relation(fields: [tenantId, productId], references: [tenantId, id], onDelete: Restrict)
+
+  @@unique([serviceId, productId])
+  @@index([tenantId])
+  @@map("service_products")
+}
+
+enum StockMovementType {
+  restock
+  sale
+  adjustment
+  consumption
+
+  @@map("stock_movement_type")
+}
+
+// Append-only audit trail. Quantities are signed deltas in the product's base unit.
+model StockMovement {
+  id            String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String            @map("tenant_id") @db.Uuid
+  productId     String            @map("product_id") @db.Uuid
+  appointmentId String?           @map("appointment_id") @db.Uuid
+  recordedById  String            @map("recorded_by") @db.Uuid
+  type          StockMovementType
+  quantity      Decimal           @db.Decimal(12, 3)
+  balanceAfter  Decimal           @map("balance_after") @db.Decimal(12, 3)
+  productName   String            @map("product_name")
+  unit          String
+  unitCost      Int               @map("unit_cost")
+  reason        String
+  createdAt     DateTime          @default(now()) @map("created_at")
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  product     Product      @relation(fields: [tenantId, productId], references: [tenantId, id], onDelete: Restrict)
+  appointment Appointment? @relation(fields: [tenantId, appointmentId], references: [tenantId, id], onDelete: Restrict)
+  recordedBy  User         @relation(fields: [tenantId, recordedById], references: [tenantId, id], onDelete: Restrict)
+  retailSale  RetailSale?
+
+  @@unique([tenantId, id])
+  @@index([tenantId, productId, createdAt])
+  @@index([tenantId, appointmentId])
+  @@map("stock_movements")
+}
+
+// Vente au détail acquittée. Une ligne correspond à un produit et à un reçu.
+// Les valeurs descriptives et financières sont figées pour préserver l'historique.
+model RetailSale {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String        @map("tenant_id") @db.Uuid
+  clientId        String?       @map("client_id") @db.Uuid
+  productId       String        @map("product_id") @db.Uuid
+  recordedById    String        @map("recorded_by") @db.Uuid
+  stockMovementId String        @map("stock_movement_id") @db.Uuid
+  productName     String        @map("product_name")
+  unit            String
+  quantity        Decimal       @db.Decimal(12, 3)
+  unitPrice       Int           @map("unit_price")
+  total           Int
+  method          PaymentMethod
+  soldAt          DateTime      @map("sold_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  client        Client?       @relation(fields: [tenantId, clientId], references: [tenantId, id], onDelete: Restrict)
+  product       Product       @relation(fields: [tenantId, productId], references: [tenantId, id], onDelete: Restrict)
+  recordedBy    User          @relation(fields: [tenantId, recordedById], references: [tenantId, id], onDelete: Restrict)
+  stockMovement StockMovement @relation(fields: [tenantId, stockMovementId], references: [tenantId, id], onDelete: Restrict)
+
+  @@unique([tenantId, stockMovementId])
+  @@index([tenantId, soldAt])
+  @@index([tenantId, clientId, soldAt])
+  @@map("retail_sales")
 }

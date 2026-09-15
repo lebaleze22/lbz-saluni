@@ -1,0 +1,1929 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Full SALUNI checkpoint report: implementation, architecture, access, data model, macOS deployment, verification, limits, and next steps at commit 8253176."
+    />
+    <title>SALUNI · Full checkpoint report · 8 September 2026</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #172e25;
+        --muted: #59665d;
+        --forest: #123d2d;
+        --green: #256648;
+        --paper: #f5f4ed;
+        --line: #dce1d7;
+        --gold: #f2c96c;
+        font-family: Inter, "Segoe UI", system-ui, sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+        scroll-padding-top: 28px;
+      }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        line-height: 1.65;
+      }
+      a {
+        color: #1b6645;
+        text-underline-offset: 3px;
+        overflow-wrap: anywhere;
+      }
+      a:hover {
+        text-decoration-thickness: 2px;
+      }
+      button,
+      a {
+        -webkit-tap-highlight-color: transparent;
+      }
+      :focus-visible {
+        outline: 3px solid #d48d10;
+        outline-offset: 4px;
+      }
+      .skip {
+        position: fixed;
+        top: -100px;
+        left: 18px;
+        z-index: 5;
+        padding: 10px 18px;
+        background: white;
+      }
+      .skip:focus {
+        top: 12px;
+      }
+      .sidebar {
+        position: fixed;
+        inset: 0 auto 0 0;
+        width: 256px;
+        padding: 36px 24px;
+        color: #ecf4eb;
+        background: var(--forest);
+        overflow-y: auto;
+      }
+      .brand {
+        font-weight: 850;
+        letter-spacing: 0.18em;
+        font-size: 1.35rem;
+        margin: 0;
+      }
+      .brand small {
+        display: block;
+        font-size: 0.69rem;
+        letter-spacing: 0.08em;
+        font-weight: 500;
+        color: #bfd3c6;
+        margin-top: 4px;
+      }
+      .nav-label {
+        margin: 35px 0 12px;
+        color: #b7d0be;
+        text-transform: uppercase;
+        font-size: 0.69rem;
+        font-weight: 750;
+        letter-spacing: 0.14em;
+      }
+      .sidebar nav {
+        display: grid;
+        gap: 3px;
+      }
+      .sidebar nav a {
+        display: flex;
+        gap: 12px;
+        padding: 9px 10px;
+        border-radius: 7px;
+        color: #e6f0e6;
+        text-decoration: none;
+        font-size: 0.83rem;
+      }
+      .sidebar nav a:hover {
+        background: #285340;
+      }
+      .sidebar nav span {
+        color: #b4caba;
+        font-size: 0.72rem;
+        padding-top: 2px;
+      }
+      .sidebar .stamp {
+        border-top: 1px solid #42634e;
+        margin-top: 27px;
+        padding-top: 20px;
+        font-size: 0.75rem;
+        color: #cadacc;
+      }
+      .sidebar code {
+        color: white;
+        background: #285340;
+      }
+      main {
+        margin-left: 256px;
+        max-width: 1470px;
+        padding: 44px clamp(24px, 4.2vw, 74px) 80px;
+      }
+      .topline {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+      .eyebrow {
+        color: var(--green);
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        font-weight: 800;
+        font-size: 0.72rem;
+        margin: 0;
+      }
+      button {
+        border: 1px solid #bdc9ba;
+        background: white;
+        color: var(--forest);
+        border-radius: 8px;
+        padding: 10px 15px;
+        font: inherit;
+        font-size: 0.8rem;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #e8efdf;
+      }
+      .hero {
+        background: var(--forest);
+        color: #f7faf4;
+        border-radius: 20px;
+        padding: clamp(26px, 4vw, 54px);
+        position: relative;
+        overflow: hidden;
+      }
+      .hero::after {
+        content: "";
+        position: absolute;
+        width: 260px;
+        height: 260px;
+        border: 1px solid #416e50;
+        border-radius: 50%;
+        right: -125px;
+        top: -105px;
+        pointer-events: none;
+      }
+      .hero .eyebrow {
+        color: var(--gold);
+      }
+      h1 {
+        font-size: clamp(2.2rem, 4.4vw, 4.1rem);
+        line-height: 1.06;
+        letter-spacing: -0.05em;
+        font-weight: 770;
+        margin: 18px 0 20px;
+        max-width: 740px;
+      }
+      .hero .lede {
+        color: #dbe8d9;
+        max-width: 730px;
+        font-size: 1.03rem;
+        margin-bottom: 25px;
+      }
+      .meta {
+        display: flex;
+        gap: 9px;
+        flex-wrap: wrap;
+        font-size: 0.76rem;
+      }
+      .meta span {
+        padding: 5px 11px;
+        border: 1px solid #52725b;
+        border-radius: 99px;
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 13px;
+        margin: 20px 0 30px;
+      }
+      .stat {
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 19px;
+      }
+      .stat strong {
+        font-size: 1.9rem;
+        line-height: 1.2;
+        display: block;
+        letter-spacing: -0.04em;
+      }
+      .stat span {
+        color: var(--muted);
+        font-size: 0.78rem;
+        display: block;
+        margin-top: 7px;
+      }
+      section {
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 15px;
+        padding: clamp(22px, 3vw, 38px);
+        margin-top: 22px;
+        scroll-margin-top: 24px;
+      }
+      .section-head {
+        display: flex;
+        gap: 13px;
+        align-items: baseline;
+        margin-bottom: 17px;
+      }
+      .section-head > span {
+        font-size: 0.77rem;
+        color: #778a73;
+        font-weight: 750;
+      }
+      h2 {
+        margin: 0;
+        font-size: 1.55rem;
+        letter-spacing: -0.035em;
+        line-height: 1.25;
+      }
+      h3 {
+        font-size: 1.08rem;
+        margin: 26px 0 9px;
+        line-height: 1.4;
+      }
+      p {
+        margin: 10px 0 14px;
+      }
+      .muted,
+      .source,
+      .caption {
+        color: var(--muted);
+        font-size: 0.84rem;
+      }
+      .source {
+        margin: 16px 0 0;
+      }
+      .callout {
+        border-left: 4px solid #468660;
+        background: #f0f6ec;
+        padding: 16px 19px;
+        margin: 18px 0;
+        border-radius: 0 9px 9px 0;
+      }
+      .callout p {
+        margin: 0;
+      }
+      .callout.amber {
+        background: #fff8e8;
+        border-left-color: #bf8625;
+      }
+      .grid2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 20px;
+      }
+      .grid2 > div {
+        min-width: 0;
+      }
+      ul,
+      ol {
+        padding-left: 22px;
+        margin: 11px 0 18px;
+      }
+      li {
+        padding-left: 3px;
+      }
+      li + li {
+        margin-top: 7px;
+      }
+      .table-wrap {
+        overflow-x: auto;
+        margin: 17px 0;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.85rem;
+        line-height: 1.55;
+        text-align: left;
+      }
+      caption {
+        text-align: left;
+        padding: 12px 14px;
+        font-weight: 700;
+        background: #f9faf5;
+      }
+      th {
+        background: #eef2e9;
+        font-size: 0.74rem;
+        text-transform: uppercase;
+        letter-spacing: 0.035em;
+        color: #40523c;
+      }
+      th,
+      td {
+        padding: 12px 14px;
+        vertical-align: top;
+        border-bottom: 1px solid var(--line);
+      }
+      tbody tr:last-child td,
+      tbody tr:last-child th {
+        border-bottom: 0;
+      }
+      tbody tr:nth-child(even) {
+        background: #fbfcf8;
+      }
+      td:first-child {
+        font-weight: 650;
+      }
+      .badge {
+        display: inline-block;
+        font-size: 0.7rem;
+        padding: 3px 8px;
+        border-radius: 5px;
+        font-weight: 750;
+        white-space: nowrap;
+      }
+      .pass {
+        color: #195636;
+        background: #e6f2e7;
+      }
+      .pending {
+        color: #805512;
+        background: #fff0cf;
+      }
+      .info {
+        color: #39516f;
+        background: #edf1f7;
+      }
+      code {
+        background: #edf0e9;
+        border-radius: 4px;
+        padding: 2px 5px;
+        font-family: Consolas, "Courier New", monospace;
+        font-size: 0.86em;
+        overflow-wrap: anywhere;
+      }
+      pre {
+        background: #172c23;
+        color: #e5f0e0;
+        padding: 19px;
+        border-radius: 9px;
+        overflow-x: auto;
+        line-height: 1.7;
+        font-size: 0.82rem;
+      }
+      pre code {
+        background: transparent;
+        padding: 0;
+        font-size: 1em;
+        color: inherit;
+      }
+      details {
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        padding: 13px 17px;
+        margin: 13px 0;
+      }
+      summary {
+        cursor: pointer;
+        font-weight: 700;
+        font-size: 0.88rem;
+      }
+      .flow {
+        padding: 22px;
+        background: #f4f7f0;
+        border: 1px solid #d7e1cf;
+        border-radius: 12px;
+        margin: 20px 0;
+      }
+      .flow-step {
+        border: 1px solid #c6d4bd;
+        border-radius: 9px;
+        background: white;
+        padding: 14px 17px;
+        text-align: center;
+      }
+      .flow-step strong,
+      .flow-step small {
+        display: block;
+      }
+      .flow-step small {
+        color: var(--muted);
+        font-size: 0.8rem;
+        margin-top: 3px;
+      }
+      .arrow {
+        text-align: center;
+        color: #486846;
+        font-size: 1.25rem;
+        padding: 3px;
+      }
+      .flow-branches {
+        display: grid;
+        grid-template-columns: 1.4fr 1fr;
+        gap: 14px;
+      }
+      .flow-db {
+        background: #e1edda;
+        border-color: #aabf9f;
+      }
+      .step-list {
+        counter-reset: delivery;
+        list-style: none;
+        padding: 0;
+      }
+      .step-list li {
+        position: relative;
+        padding: 3px 0 19px 45px;
+        margin-top: 13px;
+        border-bottom: 1px solid var(--line);
+      }
+      .step-list li::before {
+        counter-increment: delivery;
+        content: counter(delivery);
+        position: absolute;
+        top: 1px;
+        left: 0;
+        width: 29px;
+        height: 29px;
+        line-height: 29px;
+        text-align: center;
+        border-radius: 50%;
+        background: var(--forest);
+        color: white;
+        font-size: 0.8rem;
+        font-weight: 750;
+      }
+      .step-list li:last-child {
+        border-bottom: 0;
+        padding-bottom: 0;
+      }
+      .step-list strong {
+        display: block;
+        margin-bottom: 4px;
+      }
+      .foot {
+        margin: 25px 0 0;
+        font-size: 0.78rem;
+        color: var(--muted);
+      }
+      @media (min-width: 1600px) {
+        main {
+          margin-right: auto;
+        }
+      }
+      @media (max-width: 1100px) {
+        .sidebar {
+          width: 215px;
+          padding: 28px 16px;
+        }
+        main {
+          margin-left: 215px;
+          padding-left: 25px;
+          padding-right: 25px;
+        }
+        .stats {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      @media (max-width: 760px) {
+        .sidebar {
+          position: static;
+          width: auto;
+          padding: 22px;
+        }
+        .sidebar nav {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 2px 8px;
+        }
+        .nav-label {
+          margin-top: 19px;
+        }
+        .sidebar .stamp {
+          display: none;
+        }
+        main {
+          margin-left: 0;
+          padding: 24px 14px 45px;
+        }
+        .grid2,
+        .flow-branches {
+          grid-template-columns: 1fr;
+        }
+        .hero {
+          border-radius: 12px;
+        }
+        .table-wrap {
+          border-radius: 6px;
+        }
+        th,
+        td {
+          padding: 10px;
+        }
+      }
+      @media (max-width: 390px) {
+        .stats {
+          gap: 8px;
+        }
+        .stat {
+          padding: 14px;
+        }
+        .sidebar nav a {
+          font-size: 0.76rem;
+          padding: 7px 4px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+      }
+      @page {
+        size: A4;
+        margin: 16mm;
+      }
+      @media print {
+        body {
+          background: white;
+          color: black;
+          font-size: 9pt;
+        }
+        .sidebar,
+        .skip,
+        .no-print {
+          display: none;
+        }
+        main {
+          margin: 0;
+          padding: 0;
+          max-width: none;
+        }
+        .hero {
+          background: white;
+          color: black;
+          border: 1px solid #b8c5af;
+          padding: 22px;
+        }
+        .hero::after {
+          display: none;
+        }
+        .hero .lede,
+        .hero .eyebrow {
+          color: #263c25;
+        }
+        h1 {
+          font-size: 30pt;
+        }
+        .meta span {
+          border-color: #aeb7a7;
+        }
+        .stats {
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 8px;
+        }
+        .stat {
+          padding: 12px;
+        }
+        .stat strong {
+          font-size: 18pt;
+        }
+        section {
+          padding: 18px 0;
+          border: 0;
+          border-top: 1px solid #bac4b0;
+          border-radius: 0;
+        }
+        h2,
+        h3,
+        .section-head,
+        summary {
+          break-after: avoid;
+        }
+        p,
+        li {
+          orphans: 3;
+          widows: 3;
+        }
+        table {
+          font-size: 8pt;
+        }
+        thead {
+          display: table-header-group;
+        }
+        tr {
+          break-inside: avoid;
+        }
+        .table-wrap {
+          overflow: visible;
+        }
+        th,
+        td {
+          padding: 8px;
+        }
+        .callout,
+        .flow,
+        .stat {
+          break-inside: avoid;
+        }
+        .grid2 {
+          display: block;
+        }
+        details {
+          border: 0;
+          padding: 0;
+        }
+        pre {
+          white-space: pre-wrap;
+          overflow-wrap: anywhere;
+          color: black;
+          background: #f4f4f0;
+          border: 1px solid #ddd;
+        }
+        a {
+          color: #234a2b;
+        }
+        .foot {
+          margin-top: 16px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip" href="#report">Skip to report</a>
+    <aside class="sidebar" aria-label="Report navigation">
+      <p class="brand">SALUNI<small>EDITED BY LBZ</small></p>
+      <p class="nav-label">Checkpoint / September 2026</p>
+      <nav aria-label="Contents">
+        <a href="#assessment"><span>01</span> Current assessment</a>
+        <a href="#checkpoint"><span>02</span> Git checkpoint</a>
+        <a href="#workflows"><span>03</span> Product workflows</a>
+        <a href="#access"><span>04</span> Access and isolation</a>
+        <a href="#architecture"><span>05</span> Architecture</a>
+        <a href="#data"><span>06</span> Data model</a>
+        <a href="#deployment"><span>07</span> Client deployment</a>
+        <a href="#verification"><span>08</span> Verification results</a>
+        <a href="#limits"><span>09</span> Limits and open work</a>
+        <a href="#next"><span>10</span> Next checkpoint</a>
+        <a href="#handoff"><span>11</span> Handoff and formats</a>
+        <a href="#evidence"><span>12</span> Source index</a>
+      </nav>
+      <p class="stamp">
+        Source baseline<br /><code>8253176</code><br /><br />8 September 2026<br />Africa/Douala ·
+        UTC+01:00
+      </p>
+    </aside>
+    <main id="report">
+      <div class="topline">
+        <p class="eyebrow">Project status / Full report</p>
+        <button class="no-print" type="button" id="print-report">Print report</button>
+      </div>
+      <header class="hero">
+        <p class="eyebrow">SALUNI · Caprice D'Ebène</p>
+        <h1>A complete view of<br />where the project stands.</h1>
+        <p class="lede">
+          The salon's core management workflows and macOS distribution tooling are implemented.
+          Local code checks pass. Release publication and acceptance on the client Mac remain to be
+          confirmed.
+        </p>
+        <div class="meta">
+          <span>8 September 2026</span><span>Branch: client-deployment</span
+          ><span>Commit: 8253176</span><span>Application version: 0.1.0</span>
+        </div>
+      </header>
+      <div class="stats" aria-label="Checkpoint facts">
+        <div class="stat">
+          <strong>28 / 28</strong><span>Unit tests passed in this review</span>
+        </div>
+        <div class="stat"><strong>6</strong><span>Main business areas implemented</span></div>
+        <div class="stat">
+          <strong>24</strong><span>Migration directories in the repository</span>
+        </div>
+        <div class="stat"><strong>81</strong><span>Services expected at installation</span></div>
+      </div>
+
+      <section id="assessment">
+        <div class="section-head">
+          <span>01</span>
+          <h2>Current assessment</h2>
+        </div>
+        <p>
+          SALUNI is LBZ's salon management application for the Cameroon market. The immediate use
+          case is replacing Caprice D'Ebène's paper activity and cash register with a digital record
+          of clients, services, staff, receipts, and expenses.
+        </p>
+        <div class="callout">
+          <p>
+            <strong>Checkpoint conclusion:</strong> the current code is a buildable MVP with
+            prepared client installation tooling. The next milestone is an evidenced release and
+            installation rehearsal, followed by acceptance on the salon's Mac.
+          </p>
+        </div>
+        <div class="grid2">
+          <div>
+            <h3>Established in this review</h3>
+            <ul>
+              <li>
+                Register, services, expenses, reports, staff, and job-title workflows exist in
+                application code.
+              </li>
+              <li>
+                Unit tests, TypeScript, ESLint, and the production Next.js build pass locally.
+              </li>
+              <li>
+                Client Compose, initialization, update scripts, and multi-architecture release
+                automation are present.
+              </li>
+              <li>The starting working tree was clean at the recorded Git commit.</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Evidence still needed</h3>
+            <ul>
+              <li>A published release with downloadable images and an installation bundle.</li>
+              <li>
+                Current database isolation and fresh-install results against a disposable stack.
+              </li>
+              <li>Installation, sign-in, and daily workflows on the intended Mac.</li>
+              <li>Recovery from backup and an update that preserves operational data.</li>
+            </ul>
+          </div>
+        </div>
+        <p class="muted">
+          Scope: local repository, source inspection, recorded architecture decisions, and commands
+          run on 8 September 2026. This review did not inspect salon production records, GitHub
+          release status, or a remote deployment. “Implemented” describes source coverage; it does
+          not imply every workflow was exercised in a browser today.
+        </p>
+      </section>
+
+      <section id="checkpoint">
+        <div class="section-head">
+          <span>02</span>
+          <h2>Git checkpoint and delivery history</h2>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <tbody>
+              <tr>
+                <th scope="row">Branch</th>
+                <td><code>client-deployment</code></td>
+              </tr>
+              <tr>
+                <th scope="row">Full commit</th>
+                <td><code>8253176108164f9b3a5a1b83d26e73194e84c5a9</code></td>
+              </tr>
+              <tr>
+                <th scope="row">Commit title</th>
+                <td>feat: prepare macOS client deployment</td>
+              </tr>
+              <tr>
+                <th scope="row">Commit date</th>
+                <td>1 September 2026, 16:15:38 +01:00</td>
+              </tr>
+              <tr>
+                <th scope="row">Starting working tree</th>
+                <td>Clean; no pending tracked or untracked files reported by Git.</td>
+              </tr>
+              <tr>
+                <th scope="row">Tracking comparison</th>
+                <td>
+                  0 commits ahead / 0 behind the locally recorded
+                  <code>origin/client-deployment</code>. No remote fetch was performed.
+                </td>
+              </tr>
+              <tr>
+                <th scope="row">Latest change size</th>
+                <td>30 files changed; 1,232 insertions and 51 deletions.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          The initial checkpoint required no new commit because the work was already saved. This
+          report and the documentation preference file are new documentation artifacts, outside that
+          source baseline; they have not been committed or pushed as part of this report.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <caption>
+              Key source milestones
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Date / commit</th>
+                <th scope="col">Milestone</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>20 Aug · <code>53b14bc</code></td>
+                <td>Initial scaffold and activity-register specification.</td>
+              </tr>
+              <tr>
+                <td>21 Aug · <code>8e0d3ae</code></td>
+                <td>Soft-delete restoration policy and RLS tests.</td>
+              </tr>
+              <tr>
+                <td>27 Aug · <code>0f3f952</code></td>
+                <td>Restricted application database role to enforce row-level security.</td>
+              </tr>
+              <tr>
+                <td>1 Sep · <code>5e32ebe</code></td>
+                <td>Core MVP workflows and the complete local stack.</td>
+              </tr>
+              <tr>
+                <td>1 Sep · <code>8253176</code></td>
+                <td>
+                  macOS installer, initialization verifier, update procedure, runtime Auth
+                  configuration, and release images.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="workflows">
+        <div class="section-head">
+          <span>03</span>
+          <h2>Implemented product workflows</h2>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Area / route</th>
+                <th scope="col">Current behavior</th>
+                <th scope="col">Boundary</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Activity register<br /><code>/register</code></td>
+                <td>
+                  Daily chronological visits, date and staff filters, client name with optional
+                  phone and sex, reservation or walk-in origin, staff selection, multiple services,
+                  per-visit prices, and a recorded payment.
+                </td>
+                <td>
+                  The payment must equal the total of service lines. No visit correction or refund
+                  action is exposed by the inspected register data layer.
+                </td>
+              </tr>
+              <tr>
+                <td>Services<br /><code>/services</code></td>
+                <td>
+                  Create and edit services, reference prices, categories including inline category
+                  creation, activation, archiving, and restoration.
+                </td>
+                <td>
+                  Changing the reference price does not overwrite prices already saved on visit
+                  lines.
+                </td>
+              </tr>
+              <tr>
+                <td>Expenses<br /><code>/expenses</code></td>
+                <td>
+                  Create, edit, archive, and restore an expense with description, positive integer
+                  FCFA amount, date, optional category, and recording staff member.
+                </td>
+                <td>
+                  Expenses are independent of visits. Archived expenses are excluded from report
+                  expense totals.
+                </td>
+              </tr>
+              <tr>
+                <td>Reports<br /><code>/reports</code></td>
+                <td>
+                  Weekly, monthly, and quarterly summaries: receipts, expenses, net result, payment
+                  methods, staff and service breakdowns, visits, service volume, and new/returning
+                  clients. PDF and Excel routes are implemented.
+                </td>
+                <td>
+                  Net result is the arithmetic of recorded receipts minus recorded expenses. Payroll
+                  and commissions are not automatically booked.
+                </td>
+              </tr>
+              <tr>
+                <td>Staff<br /><code>/staff</code><br /><code>/staff/nouveau</code></td>
+                <td>
+                  Owner creates staff profiles, assigns multiple job titles and a primary title,
+                  captures administrative and pay information, optionally provisions a system-role
+                  account, and controls status.
+                </td>
+                <td>
+                  The current edit function updates name and job assignments. It does not provide
+                  full editing of the rich administrative or pay profile.
+                </td>
+              </tr>
+              <tr>
+                <td>Job titles<br /><code>/job-titles</code></td>
+                <td>
+                  Owner manages salon-specific job titles, with create/edit and status operations.
+                </td>
+                <td>
+                  A title describes work performed. Application permissions come from system/account
+                  roles.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Register behavior that matters in daily use</h3>
+        <p>
+          Each visit is saved with its client, staff member, service lines, and payment within one
+          tenant transaction. Prices must be positive integers, duplicate services in a visit are
+          rejected, and the paid amount must match the line total. Client matching uses phone and/or
+          a case-insensitive name match; people with the same name and no phone can still be
+          confused by this best-effort matching.
+        </p>
+        <p>
+          Cash, Orange Money, and MTN MoMo are recorded payment methods. No payment collection,
+          operator API, or payment webhook is implemented in this checkpoint.
+        </p>
+        <h3>Reports and exports</h3>
+        <p>
+          Revenue is summed from payments; service breakdowns use saved visit-line prices; staff
+          breakdowns use receipts for that staff member's visits. The report periods follow the
+          Africa/Douala day boundary, with weeks beginning on Monday. Both exports use the same
+          report data function as the screen.
+        </p>
+        <p>
+          The Excel workbook contains <em>Synthèse</em> and <em>Prestations</em> sheets. Detail rows
+          represent individual service lines and repeat the visit's total on each line; summing that
+          repeated total across all detail rows would overcount multi-service visits. The PDF
+          generator includes summaries and service details, with page numbering.
+        </p>
+        <p class="source">
+          Sources: <a href="../../lib/db/register.ts">register data layer</a>,
+          <a href="../../lib/validation/register.ts">register validation</a>,
+          <a href="../../lib/db/staff.ts">staff data layer</a>,
+          <a href="../../lib/reports/aggregate.ts">report aggregation</a>,
+          <a href="../../lib/reports/excel.ts">Excel export</a>,
+          <a href="../../lib/reports/pdf.ts">PDF export</a>.
+        </p>
+      </section>
+
+      <section id="access">
+        <div class="section-head">
+          <span>04</span>
+          <h2>Access, identity, and tenant isolation</h2>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Identity</th>
+                <th scope="col">Operational screens</th>
+                <th scope="col">Staff / job titles</th>
+                <th scope="col">Current meaning</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Owner<br /><code>users.role = owner</code></td>
+                <td>Allowed</td>
+                <td>Allowed</td>
+                <td>Salon owner, with full operational parity and team administration.</td>
+              </tr>
+              <tr>
+                <td>Director<br /><code>users.role = salon_admin</code></td>
+                <td>Allowed</td>
+                <td>Denied</td>
+                <td>Runs daily salon operations.</td>
+              </tr>
+              <tr>
+                <td>Manager account<br /><code>users.role = manager</code></td>
+                <td>Denied by current guard</td>
+                <td>Denied</td>
+                <td>
+                  Account provisioning exists; a usable Manager application area does not yet exist.
+                </td>
+              </tr>
+              <tr>
+                <td>Ordinary staff<br /><code>staff.systemRole = none</code></td>
+                <td>No login</td>
+                <td>No login</td>
+                <td>Selectable service provider, with a staff record and job titles.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          The client initializer gives the Owner a linked technical Staff profile whose
+          <code>systemRole</code> is <code>manager</code>. The Owner still has
+          <code>users.role = owner</code> and therefore passes the Owner guard. This technical
+          profile is distinct from a normal Manager user account.
+        </p>
+        <ol>
+          <li>
+            <strong>Session verification:</strong> read the session cookie and verify the
+            access-token signature and expiry through <code>jose</code>. Local GoTrue uses HS256;
+            the managed setup supports ES256 through a cached remote key set.
+          </li>
+          <li>
+            <strong>Application identity:</strong> resolve the user and Staff profile from the
+            database. Admin pages require an active, non-deleted Owner or Director and an active,
+            non-deleted linked Staff profile.
+          </li>
+          <li>
+            <strong>Tenant transaction:</strong> use the restricted
+            <code>app_runtime</code> connection and transaction-local <code>app.tenant_id</code>,
+            <code>app.role</code>, and <code>app.user_id</code>.
+          </li>
+          <li>
+            <strong>Database enforcement:</strong> SQL policies control row access. Composite
+            foreign keys include the tenant ID on register relationships to prevent references to
+            another tenant's records.
+          </li>
+        </ol>
+        <p>
+          The privileged <code>adminPrisma</code> connection is used for identity bootstrap and
+          account provisioning/cleanup in the inspected staff flow. Business operations otherwise
+          use tenant transactions. These privileged call sites are a concrete review boundary when
+          extending account management.
+        </p>
+        <p>
+          The register's staff selector explicitly excludes administrative identity-document fields,
+          and a unit test protects that projection. Staff identity numbers are still captured as
+          ordinary stored fields; no field-encryption implementation was found in the inspected
+          creation path.
+        </p>
+        <div class="callout amber">
+          <p>
+            <strong>Verification limit:</strong> source inspection confirms the policies and
+            tenant-aware relationships are present. The database isolation suite was not rerun in
+            this review because a usable local Docker stack could not be confirmed.
+          </p>
+        </div>
+        <p class="source">
+          Sources: <a href="../../lib/db/auth.ts">access guards</a>,
+          <a href="../../lib/db/rls-session.ts">tenant session transactions</a>,
+          <a href="../../lib/supabase/verify-jwt.ts">JWT verification</a>,
+          <a
+            href="../../prisma/migrations/20260831140000_registry_tenant_scoped_foreign_keys/migration.sql"
+            >tenant-scoped register foreign keys</a
+          >,
+          <a href="../../prisma/migrations/20260901090000_owner_client_write_parity/migration.sql"
+            >Owner client-write parity</a
+          >.
+        </p>
+      </section>
+
+      <section id="architecture">
+        <div class="section-head">
+          <span>05</span>
+          <h2>Architecture and execution modes</h2>
+        </div>
+        <p>
+          The application is a Next.js App Router service with server-rendered pages, server
+          actions, Prisma data access, Supabase Auth, and PostgreSQL row-level security. “core-api”
+          is the Docker service name for the full Next.js application.
+        </p>
+        <figure class="flow" aria-label="Local client deployment architecture">
+          <div class="flow-step">
+            <strong>Browser on the salon Mac</strong><small>http://localhost:54321</small>
+          </div>
+          <div class="arrow" aria-hidden="true">↓</div>
+          <div class="flow-step">
+            <strong>nginx · local entry point</strong><small>Published on 127.0.0.1 only</small>
+          </div>
+          <div class="arrow" aria-hidden="true">↓</div>
+          <div class="flow-branches">
+            <div class="flow-step">
+              <strong>core-api · Next.js</strong
+              ><small
+                >Pages, actions, exports, identity checks<br />Prisma through app_runtime /
+                administrative connection</small
+              >
+            </div>
+            <div class="flow-step">
+              <strong>GoTrue · Auth</strong
+              ><small>Sign-in and sessions<br />/auth/v1 routing</small>
+            </div>
+          </div>
+          <div class="arrow" aria-hidden="true">↓</div>
+          <div class="flow-step flow-db">
+            <strong>PostgreSQL 16</strong
+            ><small
+              >Business tables + Auth schema<br />Persistent volume:
+              saluni-client-postgres-data</small
+            >
+          </div>
+          <figcaption class="caption">
+            The separate tooling image runs migrations, initialization, imports, and installation
+            checks when requested. PostgreSQL and Auth ports are internal to the Docker network.
+          </figcaption>
+        </figure>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Mode</th>
+                <th scope="col">Configuration</th>
+                <th scope="col">Purpose</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Local development stack</td>
+                <td><code>docker-compose.local.yml</code></td>
+                <td>
+                  Build from source, PostgreSQL + GoTrue locally, dedicated development seeds and
+                  tooling.
+                </td>
+              </tr>
+              <tr>
+                <td>Client Mac</td>
+                <td><code>docker-compose.client.yml</code></td>
+                <td>
+                  Pull prebuilt versioned images. Separate project, network, and database volume
+                  named for <code>saluni-client</code>.
+                </td>
+              </tr>
+              <tr>
+                <td>VPS / managed services</td>
+                <td>
+                  <code>docker-compose.yml</code> and <code>.github/workflows/deploy.yml</code>
+                </td>
+                <td>
+                  Next.js + nginx on a VPS, with separately configured database/Auth. Workflow
+                  implementation exists; actual remote state was not checked.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <details>
+          <summary>Dependency versions recorded in package-lock.json</summary>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Component</th>
+                  <th scope="col">Locked version</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Next.js / React</td>
+                  <td>14.2.35 / 18.3.1</td>
+                </tr>
+                <tr>
+                  <td>TypeScript</td>
+                  <td>5.9.3</td>
+                </tr>
+                <tr>
+                  <td>Prisma CLI / client</td>
+                  <td>6.19.3 / 6.19.3</td>
+                </tr>
+                <tr>
+                  <td>Supabase SSR / JS client</td>
+                  <td>0.12.4 / 2.112.3</td>
+                </tr>
+                <tr>
+                  <td>jose / Vitest</td>
+                  <td>6.2.10 / 4.1.11</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            These are the repository's locked versions, not a statement about current upstream
+            releases. The Dockerfile uses Node 22 Alpine; client Compose pins GoTrue to
+            <code>v2.170.0</code>.
+          </p>
+        </details>
+        <p class="source">
+          Sources: <a href="../../Dockerfile">Dockerfile</a>,
+          <a href="../../docker-compose.client.yml">client Compose</a>,
+          <a href="../../docker-compose.local.yml">development Compose</a>,
+          <a href="../../docker-compose.yml">VPS Compose</a>,
+          <a href="../../package-lock.json">lockfile</a>.
+        </p>
+      </section>
+
+      <section id="data">
+        <div class="section-head">
+          <span>06</span>
+          <h2>Data model and business rules</h2>
+        </div>
+        <p>
+          The current Prisma schema defines 12 business models. The repository contains 24 migration
+          directories, including manually written security policies and constraints that Prisma's
+          model declarations alone do not express.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Model group</th>
+                <th scope="col">Tables and relationships</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Salon and access</td>
+                <td>
+                  <code>Tenant</code> is the salon boundary. <code>User</code> links an application
+                  account to its Auth identity and tenant.
+                </td>
+              </tr>
+              <tr>
+                <td>Team</td>
+                <td>
+                  <code>Staff</code> optionally links to a User. <code>JobTitle</code> and
+                  <code>StaffJobTitle</code> support multiple titles and a primary assignment.
+                </td>
+              </tr>
+              <tr>
+                <td>Customers</td>
+                <td>
+                  <code>Client</code> stores a salon customer and optional contact/demographic
+                  fields.
+                </td>
+              </tr>
+              <tr>
+                <td>Catalogue</td>
+                <td>
+                  <code>ServiceCategory</code> groups <code>Service</code> records with reference
+                  prices.
+                </td>
+              </tr>
+              <tr>
+                <td>Activity and receipts</td>
+                <td>
+                  <code>Appointment</code> is a visit; <code>AppointmentService</code> captures
+                  individual services and their actual prices; <code>Payment</code> records a visit
+                  receipt.
+                </td>
+              </tr>
+              <tr>
+                <td>Outgoings</td>
+                <td>
+                  <code>Expense</code> belongs to a tenant and a recording Staff member,
+                  independently of visits.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <ul>
+          <li>
+            <strong>Currency:</strong> monetary amounts use integer FCFA values. Commission rates
+            use a decimal percentage; storing a rate does not calculate a payroll.
+          </li>
+          <li>
+            <strong>Time:</strong> the register and report helpers use Africa/Douala day boundaries.
+          </li>
+          <li>
+            <strong>Lifecycle:</strong> activation and soft deletion are separate fields.
+            Archive/restore behavior is implemented in supported management flows; Staff restoration
+            clears deletion but does not automatically reactivate the profile.
+          </li>
+          <li>
+            <strong>Relationships:</strong> tenant-aware foreign keys protect register parent/child
+            consistency. Removing a staff job-title assignment deletes that association row.
+          </li>
+          <li>
+            <strong>Source of truth:</strong> use the current Prisma schema together with SQL
+            migrations for implementation decisions.
+          </li>
+        </ul>
+        <p class="source">
+          Sources: <a href="../../prisma/schema.prisma">current Prisma schema</a>,
+          <a href="../../lib/dates.ts">date helpers</a>. An existing
+          <a href="../../lbz_schema_v2_erd.html">HTML ERD</a> is available; its agreement with every
+          current migration was not revalidated for this report.
+        </p>
+      </section>
+
+      <section id="deployment">
+        <div class="section-head">
+          <span>07</span>
+          <h2>macOS client deployment</h2>
+        </div>
+        <p>
+          The prepared distribution avoids building SALUNI on the client Mac. A release workflow
+          builds four SALUNI images for <code>linux/amd64</code> and <code>linux/arm64</code>:
+          <code>core-api</code>, <code>tooling</code>, <code>postgres</code>, and
+          <code>nginx</code>. GoTrue uses its separately pinned image.
+        </p>
+        <h3>Release path present in the repository</h3>
+        <ol>
+          <li>A <code>v*</code> tag or a manual workflow dispatch selects an image version.</li>
+          <li>The quality job installs dependencies, runs unit tests, and checks TypeScript.</li>
+          <li>The image matrix builds and publishes to the configured GHCR image root.</li>
+          <li>
+            The package job creates <code>saluni-client-&lt;version&gt;.tar.gz</code> and its
+            SHA-256 checksum. A tag-triggered run also attaches them to a GitHub release.
+          </li>
+        </ol>
+        <p>
+          The image root is currently <code>ghcr.io/lebaleze22/lbz-saluni</code>. Published packages
+          must be accessible to the Mac. This report confirms the workflow definition, not that a
+          specific version is already available in GHCR.
+        </p>
+        <h3>Installer sequence</h3>
+        <p>
+          <code>scripts/client-install/install-macos.sh</code> checks Docker and OpenSSL, obtains
+          tooling, creates random local database/Auth secrets, writes
+          <code>.env.client.local</code> with restricted file permissions, pulls images, starts
+          PostgreSQL and Auth, applies migrations, configures the runtime role, starts SALUNI,
+          checks Auth/login endpoints, provisions the Owner, imports the catalogue, and checks
+          installation counts.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <caption>
+              Expected initial data, enforced by the installation verifier
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Record type</th>
+                <th scope="col">Expected count</th>
+                <th scope="col">Meaning</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Tenant</td>
+                <td>1</td>
+                <td>Caprice D'Ebène by default</td>
+              </tr>
+              <tr>
+                <td>Owner / Director</td>
+                <td>1 / 0</td>
+                <td>Owner credentials chosen at installation; no pre-created Director</td>
+              </tr>
+              <tr>
+                <td>Staff</td>
+                <td>1</td>
+                <td>The linked technical Owner profile</td>
+              </tr>
+              <tr>
+                <td>Job titles / categories / services</td>
+                <td>5 / 11 / 81</td>
+                <td>Starting operational titles and Caprice catalogue</td>
+              </tr>
+              <tr>
+                <td>Clients / visits / payments / expenses</td>
+                <td>0 / 0 / 0 / 0</td>
+                <td>No fictional operational records</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          These are target counts for a fresh installation, not observed counts from the salon
+          database today. The initializer requires an Owner password of at least 14 characters,
+          rejects known development defaults, and performs a real password sign-in check. The Owner
+          then creates the Director and salon team through the application.
+        </p>
+        <h3>Updates and data continuity</h3>
+        <p>
+          <code>update-macos.sh</code> selects a version, pulls images, applies migrations,
+          configures the runtime role, and restarts the application while retaining the named
+          PostgreSQL volume. The script does not call the fresh-install initializer or import. It
+          ends with container status; it does not perform the installer's Auth/login HTTP checks or
+          create an automatic backup.
+        </p>
+        <p>
+          The existing installation guide documents manual database backups and calls for testing
+          restoration on a separate installation. An update and restore rehearsal remains an
+          acceptance step. Routine local operation is designed to continue without Internet after
+          image download, with Docker Desktop running on the Mac.
+        </p>
+        <details>
+          <summary>Prepared operator entry points</summary>
+          <p>
+            Run these from the extracted client bundle on the intended Mac after satisfying the
+            installation prerequisites. The version below is a placeholder.
+          </p>
+          <pre><code>./scripts/client-install/install-macos.sh
+
+docker compose --env-file .env.client.local -f docker-compose.client.yml ps
+
+./scripts/client-install/update-macos.sh &lt;published-version&gt;</code></pre>
+          <p>
+            Use the installer for initial setup/recovery and the update script for an operating
+            salon. Re-running initialization can reset the Owner password supplied to it;
+            fresh-install zero-count verification is not a general health check after real activity
+            has been recorded.
+          </p>
+        </details>
+        <p class="source">
+          Sources: <a href="../../.github/workflows/release-local-images.yml">release workflow</a>,
+          <a href="../../scripts/client-install/install-macos.sh">installer</a>,
+          <a href="../../scripts/client-install/update-macos.sh">updater</a>,
+          <a href="../../scripts/initialize-client.mjs">initializer</a>,
+          <a href="../../scripts/verify-client-installation.mjs">count verifier</a>,
+          <a href="../guides/installation-locale-macos.md">existing installation guide</a>.
+        </p>
+      </section>
+
+      <section id="verification">
+        <div class="section-head">
+          <span>08</span>
+          <h2>Verification results and evidence limits</h2>
+        </div>
+        <p>
+          The following results were obtained during this report on 8 September 2026. Commands used
+          <code>npm.cmd</code> on Windows because PowerShell's script policy blocked the
+          <code>npm.ps1</code> wrapper.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Check</th>
+                <th scope="col">Result</th>
+                <th scope="col">Evidence / coverage</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>npm.cmd test</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>
+                  7 test files; 28 tests passed. Vitest reported a non-failing warning about a
+                  future Vite config-loader default.
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <code>node node_modules/typescript/bin/tsc --noEmit --incremental false</code>
+                </td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>Exit code 0; no TypeScript diagnostics.</td>
+              </tr>
+              <tr>
+                <td><code>npm.cmd run lint</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>“No ESLint warnings or errors.”</td>
+              </tr>
+              <tr>
+                <td><code>npm.cmd run build</code></td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>
+                  Next.js 14.2.35 compiled, checked lint/types, completed page generation and build
+                  traces; exit code 0.
+                </td>
+              </tr>
+              <tr>
+                <td>Local Compose status</td>
+                <td><span class="badge pending">UNAVAILABLE</span></td>
+                <td>
+                  Initial Docker access was denied by the sandbox. The approved retry returned EOF.
+                  Container/database health could not be established.
+                </td>
+              </tr>
+              <tr>
+                <td>RLS integration suite</td>
+                <td><span class="badge pending">NOT RUN</span></td>
+                <td>
+                  11 test cases are present. They require a real test database/Auth stack and have
+                  separate configuration.
+                </td>
+              </tr>
+              <tr>
+                <td>Current clean install / Mac acceptance</td>
+                <td><span class="badge pending">NOT RUN</span></td>
+                <td>
+                  No new client installation, login session, or salon workflow was exercised in this
+                  review.
+                </td>
+              </tr>
+              <tr>
+                <td>Remote release / VPS status</td>
+                <td><span class="badge pending">NOT CHECKED</span></td>
+                <td>
+                  Workflow files were inspected; remote execution history, images, and secrets were
+                  not queried.
+                </td>
+              </tr>
+              <tr>
+                <td>HTML structure and links</td>
+                <td><span class="badge pass">PASS</span></td>
+                <td>
+                  Both HTML files have balanced markup and unique IDs. All 75 report links and the
+                  preference file's report link resolve to existing files or document anchors. No
+                  external reading assets are required; embedded JavaScript syntax is valid.
+                </td>
+              </tr>
+              <tr>
+                <td>HTML visual preview</td>
+                <td><span class="badge pending">UNAVAILABLE</span></td>
+                <td>
+                  The in-app browser could not connect because its tool environment lacked required
+                  sandbox metadata. No visual rendering result is claimed.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Unit-test scope</h3>
+        <p>
+          The seven passing files cover register, staff, services, and expense validation; report
+          aggregation; service grouping; and the minimal staff projection used by the register. The
+          default Vitest configuration excludes the RLS integration suite. These tests do not
+          provide end-to-end coverage of authenticated browser flows, real exports, or
+          installation/update recovery.
+        </p>
+        <h3>Prior verification recorded in the repository</h3>
+        <p>
+          <a href="../architecture/021-distribution-locale-par-images.md"
+            >Architecture decision 021</a
+          >, dated 1 September 2026, records successful local release-image builds, Bash/Compose
+          checks, a clean PostgreSQL 16 QA installation with all 24 migrations, real Owner sign-in,
+          and expected initial counts. This is historical project evidence, not a new result from
+          this review and not proof of a Mac deployment.
+        </p>
+        <p>
+          <a href="../architecture/020-verification-jwt-locale.md">Architecture decision 020</a>
+          records an earlier improvement in cached token-verification time from about 707 ms to
+          about 7.7 ms. It also explicitly reports no measurable full-page improvement in that
+          remote database environment. Those measurements were not repeated here.
+        </p>
+        <details>
+          <summary>Build output summary</summary>
+          <pre><code>Next.js 14.2.35
+Compiled successfully
+Linting and checking validity of types
+Generating static pages (13/13)
+Collecting build traces
+Exit code: 0
+
+Application routes:
+/                      /login
+/register              /services
+/expenses              /reports
+/reports/export/excel  /reports/export/pdf
+/staff                 /staff/nouveau
+/job-titles
+
+Shared first-load JavaScript: 87.3 kB
+Middleware: 85.7 kB</code></pre>
+          <p class="caption">
+            The build reports the application routes as dynamically server-rendered. The 13/13
+            generation line is a build-stage result, not a count of independently tested business
+            screens.
+          </p>
+        </details>
+      </section>
+
+      <section id="limits">
+        <div class="section-head">
+          <span>09</span>
+          <h2>Known limits and open work</h2>
+        </div>
+        <p>
+          The items below are findings from the inspected source and evidence gaps. They were
+          documented without changing application behavior during this reporting task.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Priority</th>
+                <th scope="col">Finding</th>
+                <th scope="col">Concrete follow-up</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Before client acceptance</td>
+                <td>Current Docker and database state could not be verified.</td>
+                <td>
+                  Restore access to the local stack; run all 11 isolation cases and a fresh
+                  installation in a disposable environment.
+                </td>
+              </tr>
+              <tr>
+                <td>Before client acceptance</td>
+                <td>
+                  Release definitions exist, but published artifacts and the intended Mac are
+                  unverified.
+                </td>
+                <td>
+                  Capture the released version, image architectures, archive checksum, successful
+                  pull, and Mac installation results.
+                </td>
+              </tr>
+              <tr>
+                <td>Before client acceptance</td>
+                <td>
+                  Manager accounts can be provisioned but the admin guard permits only
+                  Owner/Director.
+                </td>
+                <td>
+                  Decide the Manager user journey, then align provisioning, screen access, and
+                  explanatory UI.
+                </td>
+              </tr>
+              <tr>
+                <td>Before operational updates</td>
+                <td>Updater has no automated backup or final application sign-in check.</td>
+                <td>
+                  Rehearse backup/restore and a data-preserving upgrade, and record post-update
+                  health and login evidence.
+                </td>
+              </tr>
+              <tr>
+                <td>Product follow-up</td>
+                <td>
+                  Staff creation captures a rich profile, but update logic changes only name and job
+                  titles.
+                </td>
+                <td>
+                  Define and implement the required administrative and pay-field editing workflow.
+                </td>
+              </tr>
+              <tr>
+                <td>Product follow-up</td>
+                <td>
+                  Register currently exposes create/read operations, with exact payment equality.
+                </td>
+                <td>
+                  Define how to correct a mistaken visit and whether refunds, split payments, or
+                  partial payments belong in the next scope.
+                </td>
+              </tr>
+              <tr>
+                <td>Documentation follow-up</td>
+                <td>
+                  Early specification and schema comments still describe Director-only entry and a
+                  non-operational Owner.
+                </td>
+                <td>
+                  Publish updated HTML documentation that reflects the implemented Owner/Director
+                  parity.
+                </td>
+              </tr>
+              <tr>
+                <td>Documentation follow-up</td>
+                <td>
+                  An older RLS document records a cross-tenant FK gap; a later migration now adds
+                  those constraints.
+                </td>
+                <td>
+                  Update the historical status in HTML with a fresh integration result, preserving
+                  the chronology.
+                </td>
+              </tr>
+              <tr>
+                <td>Delivery follow-up</td>
+                <td>The release bundle still packages a Markdown installation guide.</td>
+                <td>
+                  Create its HTML successor and update packaging/references together so the client
+                  bundle follows the new document format.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Future product scope</h3>
+        <p>
+          A scheduled calendar, public booking, automated inventory reduction, WhatsApp assistant,
+          self-service multi-salon onboarding/routing, online payment collection, automated
+          commission/payroll calculations, and dedicated Manager/Staff workspaces are outside the
+          implemented checkpoint. Tenant-aware storage is already in place, but it does not itself
+          provide those product flows.
+        </p>
+        <p class="source">
+          Sources: <a href="../../lib/db/staff.ts">staff behavior</a>,
+          <a href="../../lib/db/auth.ts">role guard</a>,
+          <a href="../../lib/db/register.ts">register operations</a>,
+          <a href="../steps/Etape_01_Registre_Activite.md">original scope specification</a>,
+          <a href="../../.github/workflows/release-local-images.yml">bundle contents</a>.
+        </p>
+      </section>
+
+      <section id="next">
+        <div class="section-head">
+          <span>10</span>
+          <h2>Proposed next checkpoint</h2>
+        </div>
+        <p>
+          <strong>Target:</strong> an identified SALUNI release installed on the intended Mac, with
+          recorded acceptance results and a demonstrated way to recover its data.
+        </p>
+        <ol class="step-list">
+          <li>
+            <strong>Re-establish runtime evidence</strong>Get the local test stack healthy; run the
+            isolated RLS suite, confirm the latest constraints and Owner parity, and record the
+            results in HTML.
+          </li>
+          <li>
+            <strong>Resolve client-facing role and guide issues</strong>Make the Manager account
+            behavior explicit, prepare the HTML installation guide, and update the release bundle's
+            documentation path.
+          </li>
+          <li>
+            <strong>Prepare and identify the release</strong>Choose a version, build both supported
+            architectures, make the images accessible, and retain the bundle checksum and workflow
+            results. Publication is a separate delivery action from this report.
+          </li>
+          <li>
+            <strong>Rehearse a fresh install</strong>Use a dedicated empty volume. Verify the one
+            Owner, zero Director, one technical Staff profile, 5/11/81 catalogue counts, and empty
+            operational tables. Exercise Owner sign-in and Director creation.
+          </li>
+          <li>
+            <strong>Exercise real workflows on QA data</strong>Create a multi-service visit, confirm
+            receipts and period boundaries, record/archive/restore an expense, and compare on-screen
+            totals with PDF/Excel output. Verify Director access restrictions.
+          </li>
+          <li>
+            <strong>Prove data continuity and accept the Mac</strong>Back up and restore on a
+            separate stack, upgrade while preserving recorded data, then repeat startup, sign-in,
+            and representative workflows on the intended Mac. Record the installed version and
+            acceptance date.
+          </li>
+        </ol>
+        <p class="muted">
+          No release date or effort estimate is assigned: image availability, Docker runtime access,
+          and access to the client Mac have not been established in this review.
+        </p>
+      </section>
+
+      <section id="handoff">
+        <div class="section-head">
+          <span>11</span>
+          <h2>Handoff and documentation format</h2>
+        </div>
+        <div class="callout">
+          <p>
+            <strong>New default: HTML.</strong> Requested reports, details, summaries, drafts,
+            schemas, diagrams, plans, specifications, guides, and similar document deliverables will
+            be produced as <code>.html</code> files. The preference is recorded in
+            <a href="../documentation-preferences.html">documentation-preferences.html</a>.
+          </p>
+        </div>
+        <p>
+          This report is standalone: its content and styles are embedded, and reading it requires no
+          network assets. The section links navigate within the document. Source links point to
+          files in this checkout and work when the repository layout is retained; copying the HTML
+          alone preserves the report but not those source files.
+        </p>
+        <p>
+          The report task adds two HTML documents: this dated checkpoint report and the repository's
+          format preference. No application source, database migration, or deployment configuration
+          was edited. Existing Markdown files remain historical sources; the application's existing
+          PDF/Excel export functionality is a separate product feature.
+        </p>
+        <h3>Resume context</h3>
+        <p>
+          Start from <code>client-deployment</code> at <code>8253176</code>. Core MVP code and macOS
+          installation tooling are present; unit tests, lint, TypeScript, and a Windows production
+          build passed on 8 September. Continue with runtime/RLS evidence, client role behavior, an
+          HTML installation guide, then release and Mac acceptance. Keep new document deliverables
+          in HTML.
+        </p>
+      </section>
+
+      <section id="evidence">
+        <div class="section-head">
+          <span>12</span>
+          <h2>Source index</h2>
+        </div>
+        <p>
+          Local source files underpin this checkpoint. Existing Markdown documents are linked as
+          historical evidence; implementation claims were checked against the current code where
+          applicable.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Question</th>
+                <th scope="col">Primary files</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Project setup and versions</td>
+                <td>
+                  <a href="../../README.md">Existing README</a> ·
+                  <a href="../../package.json">package.json</a> ·
+                  <a href="../../package-lock.json">package-lock.json</a>
+                </td>
+              </tr>
+              <tr>
+                <td>Database and isolation</td>
+                <td>
+                  <a href="../../prisma/schema.prisma">Prisma schema</a> ·
+                  <a href="../../lib/db/rls-session.ts">RLS transaction layer</a> ·
+                  <a href="../../tests/rls/tenant-isolation.test.ts">Isolation tests</a>
+                </td>
+              </tr>
+              <tr>
+                <td>Navigation and permissions</td>
+                <td>
+                  <a href="../../app/(admin)/layout.tsx">Admin navigation</a> ·
+                  <a href="../../lib/db/auth.ts">Access guards</a> ·
+                  <a href="../../lib/supabase/verify-jwt.ts">JWT verifier</a>
+                </td>
+              </tr>
+              <tr>
+                <td>Operational data access</td>
+                <td>
+                  <a href="../../lib/db/register.ts">Register</a> ·
+                  <a href="../../lib/db/services.ts">Services</a> ·
+                  <a href="../../lib/db/expenses.ts">Expenses</a> ·
+                  <a href="../../lib/db/reports.ts">Reports</a>
+                </td>
+              </tr>
+              <tr>
+                <td>Team management</td>
+                <td>
+                  <a href="../../lib/db/staff.ts">Staff</a> ·
+                  <a href="../../lib/db/job-titles.ts">Job titles</a> ·
+                  <a href="../../lib/validation/staff.ts">Staff validation</a>
+                </td>
+              </tr>
+              <tr>
+                <td>Client distribution</td>
+                <td>
+                  <a href="../../docker-compose.client.yml">Client Compose</a> ·
+                  <a href="../../.github/workflows/release-local-images.yml">Release workflow</a> ·
+                  <a href="../../scripts/import-catalogue-caprice.mjs">Catalogue importer</a>
+                </td>
+              </tr>
+              <tr>
+                <td>Initialization and updates</td>
+                <td>
+                  <a href="../../scripts/client-install/install-macos.sh">Install</a> ·
+                  <a href="../../scripts/initialize-client.mjs">Initialize</a> ·
+                  <a href="../../scripts/verify-client-installation.mjs">Verify counts</a> ·
+                  <a href="../../scripts/client-install/update-macos.sh">Update</a>
+                </td>
+              </tr>
+              <tr>
+                <td>Test boundaries</td>
+                <td>
+                  <a href="../../vitest.config.ts">Unit configuration</a> ·
+                  <a href="../../vitest.rls.config.ts">RLS configuration</a> ·
+                  <a href="../../lib/reports/aggregate.test.ts">Aggregation tests</a>
+                </td>
+              </tr>
+              <tr>
+                <td>Historical decisions</td>
+                <td>
+                  <a href="../architecture/018-owner-director-parite-operationnelle.md"
+                    >Owner/Director parity</a
+                  >
+                  ·
+                  <a href="../architecture/020-verification-jwt-locale.md"
+                    >JWT performance evidence</a
+                  >
+                  ·
+                  <a href="../architecture/021-distribution-locale-par-images.md"
+                    >Image distribution and prior QA</a
+                  >
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <footer class="foot">
+        SALUNI · Edited by LBZ · Report prepared 8 September 2026, Africa/Douala · Source baseline
+        8253176<br />Evidence labels distinguish current checks, implementation inspection,
+        historical records, and unverified deployment state.
+      </footer>
+    </main>
+    <script>
+      const disclosureStates = new Map();
+      function openDetailsForPrint() {
+        document.querySelectorAll("details").forEach((item) => {
+          if (!disclosureStates.has(item)) disclosureStates.set(item, item.open);
+          item.open = true;
+        });
+      }
+      function restoreDetailsAfterPrint() {
+        disclosureStates.forEach((wasOpen, item) => {
+          item.open = wasOpen;
+        });
+        disclosureStates.clear();
+      }
+      window.addEventListener("beforeprint", openDetailsForPrint);
+      window.addEventListener("afterprint", restoreDetailsAfterPrint);
+      document.getElementById("print-report").addEventListener("click", () => {
+        openDetailsForPrint();
+        window.print();
+      });
+    </script>
+  </body>
+</html>

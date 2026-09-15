@@ -63,10 +63,23 @@ export async function resolveRlsIdentity(verifiedAuthUserId?: string): Promise<R
   // soft-deleted.
   const identityRow = await adminPrisma.user.findUnique({
     where: { id: authUserId },
-    select: { id: true, tenantId: true, role: true, isDeleted: true },
+    select: {
+      id: true,
+      tenantId: true,
+      role: true,
+      active: true,
+      isDeleted: true,
+      tenant: { select: { active: true, isDeleted: true } },
+    },
   });
 
-  if (!identityRow || identityRow.isDeleted) {
+  if (
+    !identityRow ||
+    !identityRow.active ||
+    identityRow.isDeleted ||
+    !identityRow.tenant.active ||
+    identityRow.tenant.isDeleted
+  ) {
     throw new AccessDeniedError();
   }
 

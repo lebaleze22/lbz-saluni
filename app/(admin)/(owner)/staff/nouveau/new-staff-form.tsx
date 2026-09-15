@@ -291,7 +291,9 @@ export function NewStaffForm({ titles }: { titles: Title[] }) {
                   className={inputClass}
                 >
                   <option value="none">Aucun accès</option>
-                  <option value="manager">Manager</option>
+                  <option value="manager" disabled>
+                    Manager (bientôt disponible)
+                  </option>
                   <option value="director">Director</option>
                 </select>
               </label>

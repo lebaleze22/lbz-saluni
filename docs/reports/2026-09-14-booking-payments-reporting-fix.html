@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="SALUNI booking, payment, stock, and reporting correction report." />
+    <title>SALUNI · Booking and reporting correction</title>
+    <style>
+      :root { color-scheme: light; --ink:#173b2c; --green:#1d6346; --pale:#edf5ee; --paper:#fff; --ground:#f4f2e9; --line:#d9ded6; --amber:#8a5b12; }
+      * { box-sizing: border-box; }
+      body { margin:0; background:var(--ground); color:var(--ink); font:16px/1.65 system-ui,sans-serif; }
+      main { width:min(1080px,calc(100% - 32px)); margin:32px auto 64px; }
+      header,section { border:1px solid var(--line); border-radius:18px; }
+      header { padding:clamp(28px,6vw,58px); color:#fff; background:linear-gradient(135deg,#153d2d,#247052); }
+      section { margin-top:20px; padding:clamp(22px,4vw,36px); background:var(--paper); }
+      h1 { margin:8px 0 14px; max-width:850px; font-size:clamp(2.15rem,6vw,4rem); line-height:1.05; }
+      h2 { margin-top:0; font-size:1.45rem; }
+      h3 { margin:0 0 6px; }
+      .eyebrow { margin:0; font-size:.78rem; font-weight:800; letter-spacing:.13em; text-transform:uppercase; }
+      .status { display:inline-block; margin-top:16px; padding:8px 13px; border-radius:999px; color:#143a2b; background:#dcf5e5; font-weight:800; }
+      .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:14px; }
+      .card { padding:18px; border:1px solid var(--line); border-radius:13px; background:#fbfcfa; }
+      .metric { margin:0; font-size:2rem; font-weight:850; }
+      table { width:100%; border-collapse:collapse; }
+      th,td { padding:12px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
+      th { background:var(--pale); }
+      code { overflow-wrap:anywhere; }
+      a { color:var(--green); text-underline-offset:3px; }
+      .note { border-left:4px solid var(--amber); padding:14px 18px; background:#fff8e8; }
+      .ok { color:#17623e; font-weight:800; }
+      ul { padding-left:1.35rem; }
+      li + li { margin-top:7px; }
+      @media (max-width:640px) { main { width:min(100% - 20px,1080px); margin-top:10px; } table { display:block; overflow-x:auto; } }
+      @media print { body { background:#fff; } main { width:100%; margin:0; } section { break-inside:avoid; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">SALUNI · Approved correction · 14 September 2026</p>
+        <h1>Bookings, payments, stock, and reports now follow one consistent lifecycle</h1>
+        <p>A future appointment no longer behaves like a completed and fully paid salon visit.</p>
+        <p class="status">Implemented, migrated, repaired, tested, and running locally</p>
+      </header>
+
+      <section>
+        <h2>Corrected business behavior</h2>
+        <table>
+          <thead><tr><th>Action</th><th>Appointment</th><th>Payment</th><th>Inventory and reports</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>Book a future appointment</td>
+              <td><code>scheduled</code>, then optionally <code>confirmed</code></td>
+              <td>Unpaid, partially paid by advance, or fully paid</td>
+              <td>No stock consumption and no realized service revenue</td>
+            </tr>
+            <tr>
+              <td>Record an additional booking payment</td>
+              <td>Status remains operationally independent</td>
+              <td>Payment is added without exceeding the planned total</td>
+              <td>Cash and advances appear by their actual receipt date</td>
+            </tr>
+            <tr>
+              <td>Complete checkout</td>
+              <td><code>completed</code></td>
+              <td>Only the remaining balance is collected</td>
+              <td>Stock is consumed once and service revenue becomes realized</td>
+            </tr>
+            <tr>
+              <td>Record a visit already completed</td>
+              <td><code>completed</code> immediately</td>
+              <td>Full settlement is required</td>
+              <td>Stock and realized revenue are recorded immediately</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>User-facing changes</h2>
+        <div class="grid">
+          <article class="card"><h3>Register</h3><p>Explicit choices for <strong>Visite réalisée</strong> and <strong>Rendez-vous à venir</strong>, with duration and an optional advance for bookings.</p></article>
+          <article class="card"><h3>Appointments</h3><p>Each appointment displays unpaid, partially paid, or paid state, amounts received, balance, and payment history.</p></article>
+          <article class="card"><h3>Checkout</h3><p>The completion form shows the exact remaining balance and supports appointments already paid in full.</p></article>
+          <article class="card"><h3>Register totals</h3><p>The daily card now reports actual cash received from services and retail product sales.</p></article>
+          <article class="card"><h3>Period navigation</h3><p>Reports include previous and next controls, making the 7–13 September week directly accessible from 14 September.</p></article>
+          <article class="card"><h3>Client dossier</h3><p>Appointment history includes payment state while retaining the operational appointment state.</p></article>
+        </div>
+      </section>
+
+      <section>
+        <h2>Reporting corrections</h2>
+        <ul>
+          <li>All six appointment outcomes are visible in the screen, PDF, and Excel: scheduled, confirmed, arrived, completed, cancelled, and no-show.</li>
+          <li>Realized service revenue is based on completed services. Cash received is tracked separately by payment receipt date.</li>
+          <li>Advances, unpaid bookings, partial bookings, paid bookings, and the remaining open balance are displayed separately.</li>
+          <li>Product reports now show both the number of sale receipts and the sum of units sold.</li>
+          <li>Product quantities are grouped by measurement unit so units, millilitres, and grams are never combined into a misleading total.</li>
+          <li>The Excel export includes a product summary worksheet; PDF and Excel contain the expanded appointment and payment metrics.</li>
+        </ul>
+        <p class="note">Example corrected by this implementation: three Zara Red Edition sale receipts containing five units now report 3 receipts and 5 units.</p>
+      </section>
+
+      <section>
+        <h2>Operational data correction</h2>
+        <p>Before changing salon data, a verified PostgreSQL backup was created at <code>docs/backups/saluni-before-booking-payment-fix-20260914.dump</code>.</p>
+        <table>
+          <thead><tr><th>Existing record</th><th>Incorrect state</th><th>Corrected state</th></tr></thead>
+          <tbody>
+            <tr><td>Booking of 12 September</td><td>Completed and paid</td><td><code>scheduled</code>, unpaid, completion date cleared</td></tr>
+            <tr><td>Booking of 13 September</td><td>Completed and paid</td><td><code>confirmed</code>, unpaid, completion date cleared</td></tr>
+            <tr><td>Payments totalling 55,000 FCFA</td><td>Counted as active receipts</td><td>Soft-deleted and inactive, preserving the audit trail</td></tr>
+            <tr><td>One booking stock consumption</td><td>Reduced stock before service completion</td><td>Compensated by an audited +1 adjustment; resulting balance 649</td></tr>
+          </tbody>
+        </table>
+        <p>The repair is an idempotent SQL operation in <code>scripts/repairs/2026-09-14-booking-status-correction.sql</code>. It validates the expected records and payment total before applying changes.</p>
+      </section>
+
+      <section>
+        <h2>Database design</h2>
+        <p>Migration <code>20260914100000_booking_payments</code> adds payment purpose (<code>advance</code> or <code>settlement</code>) and the actual receipt timestamp. Existing payment rows are backfilled safely, positive payment amounts are enforced, and receipt-date reporting is indexed.</p>
+        <p>Booking payments and service completion are independent. This prevents an advance from completing an appointment or consuming stock, while checkout remains idempotent and cannot consume a service recipe twice.</p>
+      </section>
+
+      <section>
+        <h2>Verification evidence</h2>
+        <div class="grid">
+          <article class="card"><p class="metric">82</p><p>unit tests passed across 17 files</p></article>
+          <article class="card"><p class="metric">31</p><p>database scenarios passed</p></article>
+          <article class="card"><p class="metric">11</p><p>authentication and RLS checks passed</p></article>
+          <article class="card"><p class="metric">40</p><p>authenticated HTTP checks passed</p></article>
+          <article class="card"><p class="metric">30</p><p>migrations applied from an empty QA database</p></article>
+        </div>
+        <p class="ok">Prisma generation, formatting and validation, TypeScript, production build, route generation, and whitespace validation passed.</p>
+        <p>Live owner checks passed for the register, sales, appointments, the corrected prior-week report, inventory, PDF report export, Excel report export, and CSV/XLSX inventory templates. Automated validation covered rendering and server behavior; the in-app browser was unavailable for visual interaction during this run.</p>
+      </section>
+
+      <section>
+        <h2>Local deployment</h2>
+        <p>The local application is running at <a href="http://localhost:54700">http://localhost:54700</a>. Open <a href="http://localhost:54700/register">Register</a>, <a href="http://localhost:54700/appointments">Appointments</a>, or the corrected <a href="http://localhost:54700/reports?period=week&amp;date=2026-09-13">7–13 September report</a>.</p>
+        <p>Windows dynamically reserved the previous port <code>54321</code> inside the range <code>54265–54364</code>. The private local environment was therefore moved to the available port <code>54700</code>; PostgreSQL data and application behavior were unchanged.</p>
+      </section>
+
+      <section>
+        <h2>Next queued implementation</h2>
+        <p>WhatsApp remains the next planned feature from Step 6 of the architecture. Its implementation has not started in this correction, and will begin only after its scope is presented and approved.</p>
+      </section>
+    </main>
+  </body>
+</html>

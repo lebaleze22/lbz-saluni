@@ -8,13 +8,21 @@ import {
   Scissors,
   Sparkles,
   Users,
+  ContactRound,
+  Package,
+  ShoppingBag,
+  CalendarDays,
 } from "lucide-react";
 import { AccessDeniedError, requireAdminMember } from "@/lib/db/auth";
 import { LogoutButton } from "@/app/(admin)/logout-button";
 
 const OPERATIONAL_LINKS = [
   { href: "/register", label: "Registre", icon: BookOpen },
+  { href: "/appointments", label: "Agenda", icon: CalendarDays },
+  { href: "/clients", label: "Clients", icon: ContactRound },
   { href: "/services", label: "Prestations", icon: Sparkles },
+  { href: "/inventory", label: "Stock", icon: Package },
+  { href: "/sales", label: "Ventes", icon: ShoppingBag },
   { href: "/expenses", label: "Dépenses", icon: ReceiptText },
   { href: "/reports", label: "Rapports", icon: BarChart3 },
 ];
@@ -70,7 +78,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
       <div className="min-w-0 flex-1">
         <header className="border-b border-stone-200 bg-white">
-          <div className="flex w-full items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+          <div className="flex w-full flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-8">
             <Link href={home} className="flex items-center gap-3 lg:hidden">
               <span className="grid size-9 place-items-center rounded-xl bg-emerald-950 text-white">
                 <Scissors className="size-4" aria-hidden="true" />
@@ -86,13 +94,17 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 {member.role === "owner" ? "Owner" : "Director"} · {member.tenant.name}
               </p>
             </div>
-            <nav aria-label="Navigation mobile" className="flex items-center gap-1 lg:hidden">
+            <nav
+              aria-label="Navigation mobile"
+              className="flex w-full items-center gap-1 overflow-x-auto pb-1 lg:hidden"
+            >
               {links.map(({ href, label, icon: Icon }) => (
                 <Link
                   key={href}
                   href={href}
                   aria-label={label}
-                  className="grid size-9 place-items-center rounded-lg text-stone-600 hover:bg-stone-100"
+                  title={label}
+                  className="grid size-9 shrink-0 place-items-center rounded-lg text-stone-600 hover:bg-stone-100"
                 >
                   <Icon className="size-4" aria-hidden="true" />
                 </Link>

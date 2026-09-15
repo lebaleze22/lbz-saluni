@@ -23,6 +23,16 @@ const validInput = {
 };
 
 describe("validation du staff", () => {
+  it("refuse un nouveau compte Manager sans espace applicatif disponible", () => {
+    expect(
+      staffCreateSchema.safeParse({
+        ...validInput,
+        systemRole: "manager",
+        email: "manager@example.com",
+        password: "A-long-password-2026",
+      }).success,
+    ).toBe(false);
+  });
   it("accepte un profil complet avec salaire fixe et poste principal", () => {
     expect(staffCreateSchema.safeParse(validInput).success).toBe(true);
   });

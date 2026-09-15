@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SALUNI · Client identity · 9 September 2026</title>
+    <style>
+      body {
+        font:
+          16px/1.7 system-ui,
+          sans-serif;
+        color: #183c2b;
+        background: #f5f4ed;
+        margin: 0;
+      }
+      main {
+        max-width: 900px;
+        margin: auto;
+        padding: 40px 24px;
+      }
+      header {
+        background: #183c2b;
+        color: white;
+        padding: 28px;
+        border-radius: 16px;
+      }
+      section {
+        background: white;
+        padding: 24px;
+        margin-top: 20px;
+        border-radius: 12px;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+      td,
+      th {
+        padding: 12px;
+        border-bottom: 1px solid #ddd;
+        text-align: left;
+      }
+      a {
+        color: #287151;
+      }
+      code {
+        overflow-wrap: anywhere;
+      }
+      @media print {
+        body {
+          background: white;
+        }
+        section {
+          break-inside: avoid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p>SALUNI · 9 September 2026</p>
+        <h1>One client record, four identity checks</h1>
+        <p>Name, phone, email and sex are compared together within each salon.</p>
+      </header>
+      <section>
+        <h2>Matching rules</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Situation</th>
+              <th>Result</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>All four fields match</td>
+              <td>
+                Client creation and edits into a duplicate are blocked. The register reuses an exact
+                active match when contact details are present.
+              </td>
+            </tr>
+            <tr>
+              <td>Same name, different phone, email or sex</td>
+              <td>A separate client record is allowed.</td>
+            </tr>
+            <tr>
+              <td>Shared phone or email, different name</td>
+              <td>A separate record is allowed; phone alone no longer links a visit.</td>
+            </tr>
+            <tr>
+              <td>Matching record has no phone or email</td>
+              <td>
+                Select the existing client explicitly, or supply distinguishing contact details. The
+                register does not silently assume identity.
+              </td>
+            </tr>
+            <tr>
+              <td>Archived match</td>
+              <td>Restore the existing record instead of creating a replacement.</td>
+            </tr>
+            <tr>
+              <td>Multiple legacy matches</td>
+              <td>The register requires an explicit client selection.</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          Missing fields compare as empty values. A difference in any one field makes the four-field
+          combination distinct. These are duplicate-entry checks, not proof of a person's identity;
+          incomplete or mistyped details can still describe the same person differently.
+        </p>
+      </section>
+      <section>
+        <h2>Normalization and concurrency</h2>
+        <p>
+          Name comparisons ignore casing and repeated whitespace. Email comparisons ignore casing
+          and surrounding whitespace. Phone comparisons ignore punctuation and reconcile Cameroon
+          national numbers with +237 and 00237 formats. Other international country codes are
+          retained.
+        </p>
+        <p>
+          Client creation, identity edits and register submissions share a transaction-level lock
+          per salon, preventing simultaneous application submissions from both creating the same
+          identity. Checks include archived records and remain inside tenant-restricted database
+          transactions. This is application enforcement; privileged direct database writes do not
+          pass through these checks.
+        </p>
+      </section>
+      <section>
+        <h2>What changed on screen</h2>
+        <p>
+          The register now includes an optional email field. Existing-client choices display phone,
+          email and sex where available. Both client creation and register forms explain the
+          four-field rule.
+        </p>
+        <p>
+          Existing records and histories are preserved. No automatic merge or deletion is performed,
+          and this update requires no schema migration.
+        </p>
+      </section>
+      <section>
+        <h2>Validation and local delivery</h2>
+        <p id="validation">
+          Passed: 56 unit tests, 17 database tests, 11 Auth/RLS tests, and 12 authenticated HTTP
+          checks. The production and Docker builds passed, including lint and TypeScript checks.
+          Database coverage includes normalized duplicates, edits, archived records, namesakes,
+          shared contacts, contact-free selection, and simultaneous submissions.
+        </p>
+        <p>
+          Deployed to http://localhost:54321 on 9 September 2026. The app and proxy are healthy.
+          Additional checks using the existing development Owner confirmed HTTP 200, the email
+          field, and the four-field guidance on both /register and /clients. Refresh the page to
+          load the updated forms. Visual browser verification remains unavailable.
+        </p>
+        <p>
+          <a href="2026-09-08-clients-inventory.html"
+            >Clients and inventory implementation report</a
+          >
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

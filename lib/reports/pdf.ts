@@ -1,6 +1,7 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import { formatDateFr, formatFcfa, formatTimeFr, PAYMENT_METHOD_LABELS } from "@/lib/format";
 import type { ReportData } from "@/types/reports";
+import { formatQuantity } from "@/lib/inventory/quantities";
 
 const PAGE_WIDTH = 595;
 const PAGE_HEIGHT = 842;
@@ -52,10 +53,26 @@ export async function generateReportPdf(report: ReportData): Promise<Uint8Array>
     size: 15,
     font: bold,
   });
+  line(`Prestations : ${formatFcfa(report.summary.serviceRevenue)}`);
+  line(`Ventes produits : ${formatFcfa(report.summary.retailRevenue)}`);
+  line(`Encaissements : ${formatFcfa(report.summary.totalCashReceived)}`);
+  line(`Acomptes reçus : ${formatFcfa(report.summary.advanceReceipts)}`);
   line(`Dépenses : ${formatFcfa(report.summary.totalExpenses)}`);
   line(`Résultat net : ${formatFcfa(report.summary.netResult)}`, { size: 13, font: bold });
   line(
     `${report.summary.serviceVolume} prestation(s) • ${report.summary.visitVolume} visite(s) • ${report.summary.uniqueClients} client(s)`,
+  );
+  line(
+    `Rendez-vous : ${report.summary.appointmentOutcomes.scheduled} planifié(s), ${report.summary.appointmentOutcomes.confirmed} confirmé(s), ${report.summary.appointmentOutcomes.arrived} arrivé(s)`,
+  );
+  line(
+    `Statuts suivants : ${report.summary.appointmentOutcomes.completed} terminé(s), ${report.summary.appointmentOutcomes.cancelled} annulé(s), ${report.summary.appointmentOutcomes.no_show} absent(s)`,
+  );
+  line(
+    `Paiement RDV ouverts : ${report.summary.bookingPayments.unpaid} non payé(s), ${report.summary.bookingPayments.partial} partiel(s), ${report.summary.bookingPayments.paid} payé(s)`,
+  );
+  line(
+    `Solde restant des RDV ouverts : ${formatFcfa(report.summary.bookingPayments.outstandingAmount)}`,
   );
 
   section("Répartition par méthode de paiement");
@@ -90,6 +107,25 @@ export async function generateReportPdf(report: ReportData): Promise<Uint8Array>
         { size: 9, color: rgb(0.38, 0.4, 0.44) },
       );
     }
+  }
+
+  section("Ventes de produits");
+  for (const product of report.summary.products) {
+    line(
+      `${printable(product.label)} : ${product.saleCount} vente(s), ${formatQuantity(product.quantity)} ${printable(product.unit)}, ${formatFcfa(product.amount)}`,
+      { font: bold },
+    );
+  }
+  if (report.retailSales.length === 0) line("Aucune vente de produit sur cette période.");
+  for (const sale of report.retailSales) {
+    line(
+      `${formatDateFr(sale.soldAt)} ${formatTimeFr(sale.soldAt)} • ${printable(sale.productName)} • ${sale.quantity} ${printable(sale.unit)} x ${formatFcfa(sale.unitPrice)} • ${formatFcfa(sale.total)}`,
+      { size: 9 },
+    );
+    line(
+      `${sale.clientName ? printable(sale.clientName) : "Sans fiche client"} • ${PAYMENT_METHOD_LABELS[sale.method]} • ${printable(sale.recordedByName)} • ${sale.id}`,
+      { size: 8, color: rgb(0.38, 0.4, 0.44) },
+    );
   }
 
   const pages = document.getPages();

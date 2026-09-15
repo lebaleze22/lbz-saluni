@@ -1,0 +1,805 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="SALUNI stabilization, client management and inventory implementation, acceptance evidence and operating guide."
+    />
+    <title>SALUNI · Clients, inventory and stabilization · 8 September 2026</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: "Segoe UI", system-ui, sans-serif;
+        color: #1b3329;
+        background: #f5f4ed;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        line-height: 1.7;
+      }
+      main {
+        max-width: 1120px;
+        margin: auto;
+        padding: 34px 24px 70px;
+      }
+      header {
+        border-radius: 20px;
+        background: #153f2e;
+        color: white;
+        padding: clamp(25px, 5vw, 56px);
+      }
+      .eyebrow {
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        font-size: 0.74rem;
+        font-weight: 800;
+        color: #f0cd80;
+      }
+      h1 {
+        max-width: 850px;
+        margin: 17px 0;
+        font-size: clamp(2rem, 5vw, 3.6rem);
+        line-height: 1.12;
+        letter-spacing: -0.04em;
+      }
+      header p {
+        max-width: 800px;
+        color: #dfead9;
+      }
+      .meta {
+        font-size: 0.8rem;
+        color: #c4d8c0;
+      }
+      nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 22px 0;
+      }
+      a {
+        color: #216242;
+        text-underline-offset: 3px;
+        overflow-wrap: anywhere;
+      }
+      nav a {
+        background: white;
+        border: 1px solid #d8e0d0;
+        border-radius: 8px;
+        padding: 8px 13px;
+        text-decoration: none;
+        font-size: 0.84rem;
+        font-weight: 650;
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+      }
+      .stat {
+        background: white;
+        border: 1px solid #d8e0d0;
+        border-radius: 12px;
+        padding: 20px;
+      }
+      .stat strong {
+        display: block;
+        font-size: 2rem;
+        letter-spacing: -0.05em;
+        line-height: 1.2;
+      }
+      .stat span {
+        display: block;
+        margin-top: 8px;
+        font-size: 0.8rem;
+        color: #5e6c5b;
+      }
+      section {
+        margin-top: 24px;
+        padding: clamp(22px, 4vw, 38px);
+        border-radius: 15px;
+        border: 1px solid #d8e0d0;
+        background: white;
+        scroll-margin-top: 20px;
+      }
+      h2 {
+        margin: 0 0 17px;
+        font-size: 1.6rem;
+        line-height: 1.25;
+        letter-spacing: -0.025em;
+      }
+      h3 {
+        font-size: 1.08rem;
+        margin: 26px 0 8px;
+      }
+      p {
+        margin: 10px 0 15px;
+      }
+      .note {
+        padding: 16px 20px;
+        background: #eef5e9;
+        border-left: 4px solid #4b805b;
+        border-radius: 0 8px 8px 0;
+      }
+      .pending {
+        background: #fff7e5;
+        border-left-color: #bd8c29;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 26px;
+      }
+      li + li {
+        margin-top: 7px;
+      }
+      ul,
+      ol {
+        padding-left: 23px;
+      }
+      .table-wrap {
+        overflow-x: auto;
+        border: 1px solid #dce2d6;
+        border-radius: 9px;
+        margin: 18px 0;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        text-align: left;
+        font-size: 0.87rem;
+      }
+      th {
+        background: #eef2e9;
+        color: #40573b;
+        font-size: 0.77rem;
+      }
+      th,
+      td {
+        padding: 12px 15px;
+        border-bottom: 1px solid #dce2d6;
+        vertical-align: top;
+      }
+      tbody tr:last-child td {
+        border-bottom: 0;
+      }
+      code {
+        font-family: Consolas, monospace;
+        font-size: 0.87em;
+        padding: 2px 5px;
+        background: #edf0e8;
+        border-radius: 4px;
+        overflow-wrap: anywhere;
+      }
+      pre {
+        background: #183a2b;
+        color: #eff6e9;
+        padding: 20px;
+        border-radius: 10px;
+        overflow-x: auto;
+        font-size: 0.83rem;
+      }
+      pre code {
+        background: transparent;
+        padding: 0;
+      }
+      .muted,
+      footer {
+        color: #5e6c5b;
+        font-size: 0.83rem;
+      }
+      .flow {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr auto 1fr;
+        align-items: stretch;
+        gap: 12px;
+        margin: 22px 0;
+      }
+      .flow div {
+        border: 1px solid #cedec5;
+        border-radius: 9px;
+        background: #f1f6ed;
+        padding: 15px;
+        text-align: center;
+        font-size: 0.87rem;
+      }
+      .flow span {
+        align-self: center;
+        font-size: 1.4rem;
+        color: #4c7350;
+      }
+      footer {
+        margin-top: 26px;
+      }
+      :focus-visible {
+        outline: 3px solid #b87f15;
+        outline-offset: 4px;
+      }
+      @media (max-width: 650px) {
+        main {
+          padding: 18px 12px 45px;
+        }
+        .stats {
+          grid-template-columns: 1fr 1fr;
+        }
+        .grid,
+        .flow {
+          grid-template-columns: 1fr;
+        }
+        .flow span {
+          text-align: center;
+          transform: rotate(90deg);
+        }
+      }
+      @page {
+        size: A4;
+        margin: 16mm;
+      }
+      @media print {
+        body {
+          background: white;
+          font-size: 9pt;
+        }
+        main {
+          padding: 0;
+          max-width: none;
+        }
+        nav {
+          display: none;
+        }
+        header {
+          color: black;
+          background: white;
+          border: 1px solid #b6c7a8;
+          padding: 22px;
+        }
+        header p,
+        header .eyebrow,
+        .meta {
+          color: #263e26;
+        }
+        h1 {
+          font-size: 29pt;
+        }
+        section {
+          padding: 20px 0;
+          border: 0;
+          border-top: 1px solid #c2cfb9;
+          border-radius: 0;
+        }
+        h2,
+        h3 {
+          break-after: avoid;
+        }
+        .table-wrap {
+          overflow: visible;
+        }
+        tr,
+        .stat,
+        .note,
+        .flow {
+          break-inside: avoid;
+        }
+        thead {
+          display: table-header-group;
+        }
+        pre {
+          white-space: pre-wrap;
+          color: black;
+          background: #f3f4ee;
+        }
+        .grid {
+          display: block;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div class="eyebrow">SALUNI / Implementation handoff</div>
+        <h1>Client management, inventory, and a stronger register.</h1>
+        <p>
+          Implemented from the cahier des charges: client profiles and history, inactivity segments,
+          product stock, low-stock alerts, movement history, and automatic product consumption when
+          recording a visit.
+        </p>
+        <div class="meta">
+          8 September 2026 · Africa/Douala · Branch client-deployment · Changes based on 8253176
+        </div>
+      </header>
+      <nav aria-label="Report sections">
+        <a href="#scope">Requirements</a><a href="#clients">Client management</a
+        ><a href="#inventory">Inventory</a><a href="#stability">Stabilization</a
+        ><a href="#verification">Verification</a><a href="#rollout">Rollout</a
+        ><a href="#next">Remaining scope</a>
+      </nav>
+      <div class="stats" aria-label="Validation results">
+        <div class="stat"><strong>54</strong><span>Passing unit tests</span></div>
+        <div class="stat">
+          <strong>14 + 11</strong><span>Database + real Auth/RLS tests passed</span>
+        </div>
+        <div class="stat">
+          <strong>12</strong><span>Authenticated HTTP/access checks passed</span>
+        </div>
+        <div class="stat">
+          <strong>25</strong><span>Migrations replayed on a fresh database</span>
+        </div>
+      </div>
+
+      <section id="scope">
+        <h2>What this delivery covers</h2>
+        <p>
+          The reference is
+          <a href="../Cahier_des_Charges_LBZ_Salon_SaaS.docx"
+            >Cahier des charges v1.0, August 2026</a
+          >, especially sections 4, 5.2, 5.4, and 6. Existing architectural decisions about the
+          local Docker deployment, Owner/Director access, tenant transactions, and integer FCFA
+          amounts remain in effect.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Requirement</th>
+                <th>Delivered behavior</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Client coordinates, notes, preferences</td>
+                <td>
+                  Create and update profiles with name, phone, email, optional sex, internal notes,
+                  preferences, and declared allergies/precautions.
+                </td>
+              </tr>
+              <tr>
+                <td>Full history of services and products used</td>
+                <td>
+                  Paginated visit history with staff, date, service prices, receipts, and product
+                  quantities captured during automatic consumption.
+                </td>
+              </tr>
+              <tr>
+                <td>Inactive-client segmentation</td>
+                <td>
+                  Search and filter recent, inactive, and never-visited clients; configurable
+                  inactivity window, defaulting to 90 days.
+                </td>
+              </tr>
+              <tr>
+                <td>Products, prices, quantities, stock thresholds</td>
+                <td>
+                  Product catalogue, reference/SKU, cost and selling price, unit, available
+                  quantity, threshold, and low-stock filter.
+                </td>
+              </tr>
+              <tr>
+                <td>Consumption by service</td>
+                <td>
+                  Configure a quantity of each product per service. Recording the visit deducts the
+                  combined quantities.
+                </td>
+              </tr>
+              <tr>
+                <td>Auditable stock movements</td>
+                <td>
+                  Opening stock, restocks, manual outgoing quantities, physical-count corrections,
+                  and automatic consumption record operator, reason, delta, balance, unit, product
+                  name, and cost snapshot.
+                </td>
+              </tr>
+              <tr>
+                <td>Tenant isolation</td>
+                <td>
+                  New tables use RLS and tenant-aware foreign keys. Existing Owner and Director
+                  access guards protect all new screens and actions.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">
+          Implementation and isolated QA are complete for this scope. On 8 September 2026, the local
+          Docker app at http://localhost:54321 was rebuilt and updated after a database backup. The
+          client/inventory migration is applied locally. No client Mac or VPS release was published.
+        </p>
+      </section>
+
+      <section id="clients">
+        <h2>Using client management</h2>
+        <ol>
+          <li>
+            Open <strong>Clients</strong> from the navigation. Search by name, phone, or email.
+          </li>
+          <li>
+            Use <strong>Ajouter un client</strong> to create a profile. Notes, preferences, and
+            precautions are optional.
+          </li>
+          <li>
+            Open the client's name to view their profile, visit count, total receipts, and paginated
+            history.
+          </li>
+          <li>
+            Select <strong>Enregistrer une visite</strong> from the profile to open the register
+            with that exact client selected.
+          </li>
+          <li>
+            Use <strong>Archiver le client</strong> to remove the profile from quick entry while
+            keeping its history. Restore it from the archived-client filter when needed.
+          </li>
+        </ol>
+        <h3>Segments</h3>
+        <p>
+          <strong>Visite récente</strong> means at least one non-deleted visit on or after the
+          cutoff. <strong>À relancer</strong> means the client has visited before but has no visit
+          on or after that cutoff. <strong>Jamais venus</strong> means no recorded non-deleted
+          visit. The cutoff follows the Douala day boundary. Filtering prepares a follow-up list; it
+          sends no messages.
+        </p>
+        <h3>Client identity in the register</h3>
+        <p>
+          The register now offers an explicit client selection. Two people with the same name remain
+          separate. Updated on 9 September: the register compares normalized name, phone, email, and
+          sex together. An exact match with contact details reuses the existing record; a
+          contact-free match requires explicit selection. Archived matches require restoration. See
+          <a href="2026-09-09-client-identity.html">the client identity update</a>.
+        </p>
+        <p>
+          The quick selector includes recent profiles, with a link to search all clients. Starting a
+          visit from a profile also works for clients outside that recent list. Archived records
+          cannot be selected or submitted as an existing client.
+        </p>
+        <p class="muted">
+          Historical product usage before this feature is not reconstructed. A visit shows product
+          usage only when consumption was recorded at the time of entry.
+        </p>
+        <p class="muted">
+          Implementation:
+          <a href="../../app/(admin)/(director)/clients/page.tsx">client directory</a>,
+          <a href="../../app/(admin)/(director)/clients/[id]/page.tsx">profile/history</a>,
+          <a href="../../lib/db/clients.ts">client data layer</a>.
+        </p>
+      </section>
+
+      <section id="inventory">
+        <h2>Using inventory and service consumption</h2>
+        <div class="grid">
+          <div>
+            <h3>Set up products</h3>
+            <ol>
+              <li>Open <strong>Stock → Ajouter un produit</strong>.</li>
+              <li>Choose a unit: individual unit, millilitre, or gram.</li>
+              <li>Enter the opening quantity, low-stock threshold, and prices per stock unit.</li>
+              <li>
+                Open the product to see its movements and record subsequent restocks, outgoing
+                quantities, or a physical count.
+              </li>
+            </ol>
+          </div>
+          <div>
+            <h3>Connect products to services</h3>
+            <ol>
+              <li>Open <strong>Consommations par prestation</strong>.</li>
+              <li>Select a service, then associate products and the amount used per service.</li>
+              <li>Adjust quantities or remove associations when usage changes.</li>
+              <li>
+                Record a visit normally. Its configured product usage is deducted with the visit.
+              </li>
+            </ol>
+          </div>
+        </div>
+        <div class="flow" aria-label="Atomic visit and stock workflow">
+          <div><strong>Record a visit</strong><br />Client + services + payment</div>
+          <span aria-hidden="true">→</span>
+          <div><strong>Combine product usage</strong><br />Shared products are summed</div>
+          <span aria-hidden="true">→</span>
+          <div><strong>Commit together</strong><br />Visit + stock + movement history</div>
+        </div>
+        <p>
+          If any required product is unavailable or short of stock, the transaction rolls back. It
+          does not leave a partial visit, payment, new client, or deduction from another product.
+          Product row locks serialize simultaneous deductions, and a database constraint prevents
+          negative balances.
+        </p>
+        <h3>Quantities and stock alerts</h3>
+        <p>
+          Quantities support three decimal places. Arithmetic uses exact thousandths, so repeated
+          fractional consumption does not accumulate floating-point drift. A product is flagged when
+          its quantity is at or below the configured threshold; zero stock with a zero threshold is
+          therefore flagged.
+        </p>
+        <h3>Corrections and archives</h3>
+        <p>
+          A physical count is the total quantity actually found, not a signed adjustment. The
+          application calculates and records the difference. Movement records cannot be edited or
+          deleted by the runtime database role. Fix a mistake with a new, explained correction.
+        </p>
+        <p>
+          A product can be archived only after its stock is zero and its service associations are
+          removed. Its unit cannot change after movements or associations exist, preserving the
+          meaning of historical quantities. Archived products retain their history and can be
+          restored.
+        </p>
+        <p class="note pending">
+          Manual “Sortie / vente de produit” records inventory quantities only. It does not add
+          retail receipts to the service-revenue report. Product point-of-sale accounting remains a
+          separate next feature.
+        </p>
+        <p class="muted">
+          Implementation:
+          <a href="../../app/(admin)/(director)/inventory/page.tsx">stock screens</a>,
+          <a href="../../lib/db/inventory.ts">inventory data layer</a>,
+          <a href="../../lib/db/stock.ts">transactional stock engine</a>,
+          <a href="../../lib/inventory/quantities.ts">quantity arithmetic</a>.
+        </p>
+      </section>
+
+      <section id="stability">
+        <h2>Existing behavior stabilized</h2>
+        <ul>
+          <li>
+            <strong>Client selection:</strong> explicit identities replace name-only matching, and
+            all four identity attributes are checked together before creating a client.
+          </li>
+          <li>
+            <strong>Archived data:</strong> clients, staff, services, and visits are explicitly
+            filtered for quick-entry use.
+          </li>
+          <li>
+            <strong>Salon access:</strong> inactive/deleted tenants and inactive application
+            identities are refused by the relevant guards.
+          </li>
+          <li>
+            <strong>Manager provisioning:</strong> the new-account form no longer offers an
+            operationally unusable Manager account. The existing technical Owner staff profile is
+            unaffected.
+          </li>
+          <li>
+            <strong>Amounts:</strong> register and fixed-salary validation reject values beyond
+            PostgreSQL's integer capacity.
+          </li>
+          <li>
+            <strong>Time:</strong> visit input and conversion explicitly use Douala time instead of
+            inheriting the device's timezone; incomplete/invalid date input is handled without
+            throwing during render.
+          </li>
+          <li>
+            <strong>Mobile navigation:</strong> the expanded navigation has its own scrollable row
+            to accommodate Clients and Stock.
+          </li>
+          <li>
+            <strong>Schema comments:</strong> account permissions and client-matching comments now
+            reflect the implemented behavior.
+          </li>
+        </ul>
+        <p>
+          RLS remains the database boundary; business writes continue through
+          <code>app_runtime</code> inside a tenant transaction. New inventory records use composite
+          foreign keys for product, service, visit, and operator relationships.
+        </p>
+      </section>
+
+      <section id="verification">
+        <h2>Verification evidence</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Check</th>
+                <th>Result</th>
+                <th>What was exercised</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Unit suite</td>
+                <td>54 passed</td>
+                <td>
+                  Existing business validations plus client fields, stock precision/aggregation,
+                  date boundaries, Manager creation, and amount limits.
+                </td>
+              </tr>
+              <tr>
+                <td>New database suite</td>
+                <td>14 passed</td>
+                <td>
+                  Real PostgreSQL, restricted runtime role, client identity/history/segments, exact
+                  stock balances, automatic consumption, full rollback, simultaneous deductions,
+                  ledger immutability, thresholds, unit/archive protection, and foreign-tenant
+                  rejection.
+                </td>
+              </tr>
+              <tr>
+                <td>Existing Auth/RLS suite</td>
+                <td>11 passed</td>
+                <td>
+                  Real GoTrue sign-in and verified identities, tenant isolation, restoration
+                  behavior, Owner parity, and cross-tenant references.
+                </td>
+              </tr>
+              <tr>
+                <td>Authenticated HTTP checks</td>
+                <td>12 passed</td>
+                <td>
+                  Owner rendering of all new routes plus register/reports, Director access to
+                  clients/stock, and anonymous/Manager/Director restrictions.
+                </td>
+              </tr>
+              <tr>
+                <td>Migration replay</td>
+                <td>25 applied</td>
+                <td>
+                  Full history, including the new additive client/inventory migration, on an empty
+                  PostgreSQL 16 database.
+                </td>
+              </tr>
+              <tr>
+                <td>TypeScript / ESLint / schema validation</td>
+                <td>Passed</td>
+                <td>No diagnostics or lint warnings; Prisma schema valid.</td>
+              </tr>
+              <tr>
+                <td>Production build</td>
+                <td>Passed</td>
+                <td>
+                  All five new routes compile: clients, client detail, inventory, product detail,
+                  and service-consumption configuration.
+                </td>
+              </tr>
+              <tr>
+                <td>Visual browser checks</td>
+                <td>Unavailable</td>
+                <td>
+                  The in-app browser tool failed before connecting due to missing sandbox metadata.
+                  HTTP rendering was checked, but visual layout and browser interactions were not
+                  verified.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          The database suite uses a random Docker project, random temporary credentials,
+          loopback-only ports, and a database in container memory storage. It removes its own
+          containers/network after completion. The normal salon database and stack are not test
+          targets.
+        </p>
+        <p>
+          Docker initially could not start and reported a WSL update requirement. The WSL updater
+          confirmed the installed version was current; restarting the failed Docker Desktop engine
+          recovered it. The complete database and HTTP checks then ran successfully.
+        </p>
+        <h3>Reproduce the checks</h3>
+        <pre><code>npm test
+npm run lint
+npx tsc --noEmit --incremental false
+npx prisma validate
+npm run build
+npm run test:database</code></pre>
+        <p class="muted">
+          On Windows with PowerShell script execution disabled, use <code>npm.cmd</code> /
+          <code>npx.cmd</code>. Docker Desktop must be running for the final command. Build first:
+          its HTTP checks launch the production build against the temporary QA database.
+        </p>
+        <p class="muted">
+          Evidence implementation:
+          <a href="../../tests/database/clients-inventory.test.ts">14 database tests</a>,
+          <a href="../../tests/rls/tenant-isolation.test.ts">11 Auth/RLS tests</a>,
+          <a href="../../scripts/test-database.mjs">isolated QA runner</a>,
+          <a href="../../scripts/verify-app-http.mjs">HTTP checks</a>,
+          <a href="../../docker-compose.test.yml">QA Compose</a>.
+        </p>
+      </section>
+
+      <section id="rollout">
+        <h2>Apply to an existing development installation</h2>
+        <p>
+          The new
+          <a href="../../prisma/migrations/20260908100000_clients_inventory/migration.sql"
+            >20260908100000_clients_inventory migration</a
+          >
+          adds four optional Client columns and the Product, ServiceProduct, and StockMovement
+          tables. It contains no rewrite or deletion of existing client/visit records.
+        </p>
+        <p>
+          The implementation is saved in the working tree and deployed to the local Docker stack at
+          http://localhost:54321. The previous container was still serving the old build; rebuilding
+          the app and tooling, applying the additive migration, and recreating the app and nginx
+          resolved this. Authenticated checks with the existing development Owner returned HTTP 200
+          for /register, /clients, /inventory, and /inventory/recipes, with Clients and Stock links
+          present on all four pages. Browser visual verification remains unavailable.
+        </p>
+        <p>
+          The pre-migration database backup is stored privately at
+          docs/backups/saluni-before-clients-inventory-20260908.dump, excluded from Git and Docker
+          build context. Other installations still require their normal update procedure. No release
+          was published and no commit was created.
+        </p>
+        <h3>Source-based local Docker development</h3>
+        <p>
+          After retaining a recoverable backup of the intended development database, build the
+          updated images, apply the migration through tooling, and restart the app:
+        </p>
+        <pre><code>docker compose --env-file .env.local -f docker-compose.local.yml build tooling core-api
+docker compose --env-file .env.local -f docker-compose.local.yml run --rm tooling npx prisma migrate deploy
+docker compose --env-file .env.local -f docker-compose.local.yml up -d --no-deps --force-recreate --wait core-api nginx</code></pre>
+        <p>
+          For a client Mac, first publish an identified image release containing these changes, then
+          use the existing update procedure. Running the initializer is not part of a normal update.
+        </p>
+        <h3>First operational walkthrough</h3>
+        <ol>
+          <li>Open Clients and confirm existing records are present.</li>
+          <li>Open a client and check their earlier visits and receipts.</li>
+          <li>
+            Add a test product in the chosen QA/development environment, with a known starting
+            quantity and threshold.
+          </li>
+          <li>Associate it with a service and record a visit for an explicitly selected client.</li>
+          <li>
+            Confirm the stock deduction, movement operator/reason, and product history on that
+            client.
+          </li>
+          <li>
+            Try a quantity larger than the available stock and confirm the visit is not partially
+            recorded.
+          </li>
+          <li>Review the screens at the salon Mac's display size before client acceptance.</li>
+        </ol>
+      </section>
+
+      <section id="next">
+        <h2>Remaining cahier scope</h2>
+        <p>
+          This delivery provides the client-management and inventory foundation requested. The
+          following requirements remain separate work:
+        </p>
+        <ul>
+          <li>
+            Customer review history and WhatsApp follow-ups, which depend on the review/messaging
+            modules.
+          </li>
+          <li>
+            Product retail checkout, payment receipts, and inclusion of retail revenue in financial
+            reports.
+          </li>
+          <li>
+            Automated external stock notifications; low-stock alerts currently appear inside the
+            stock screens.
+          </li>
+          <li>
+            Full staff administrative/pay-field editing, usable Manager/Staff workspaces, and
+            commission calculation.
+          </li>
+          <li>
+            Visit correction/refunds with matching stock reversal, scheduled calendars, public
+            booking, and SaaS onboarding/billing.
+          </li>
+          <li>
+            Full FR/EN product localization. The new operational screens follow the current French
+            UI.
+          </li>
+        </ul>
+        <p class="note">
+          The next useful step is a visual walkthrough on the intended runtime, followed by retail
+          checkout and visit correction with stock reversal. Those flows should preserve the
+          transaction and audit guarantees established here.
+        </p>
+        <p class="muted">
+          Documentation remains HTML by default, as recorded in
+          <a href="../documentation-preferences.html">the repository preference</a>. The
+          <a href="2026-09-08-saluni-checkpoint.html">earlier checkpoint report</a> records the
+          state before this feature work.
+        </p>
+      </section>
+      <footer>
+        SALUNI · Edited by LBZ · 8 September 2026 · Implementation report and operating guide
+      </footer>
+    </main>
+  </body>
+</html>

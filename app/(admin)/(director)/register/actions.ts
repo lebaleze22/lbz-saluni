@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createRegisterEntry, RegisterDataError } from "@/lib/db/register";
 import { AccessDeniedError } from "@/lib/db/auth";
 import { registerEntrySchema } from "@/lib/validation/register";
+import { InventoryDataError } from "@/lib/db/stock";
 
 export type RegisterFormState = {
   success: boolean;
@@ -28,12 +29,16 @@ export async function submitRegisterEntry(
   }
 
   const parsed = registerEntrySchema.safeParse({
+    entryMode: formData.get("entryMode"),
+    clientId: formData.get("clientId"),
     clientName: formData.get("clientName"),
     phone: formData.get("phone"),
+    email: formData.get("email"),
     sex: formData.get("sex"),
     staffId: formData.get("staffId"),
     source: formData.get("source"),
     startTime: formData.get("startTime"),
+    durationMinutes: formData.get("durationMinutes"),
     services,
     paymentAmount: formData.get("paymentAmount"),
     paymentMethod: formData.get("paymentMethod"),
@@ -51,16 +56,26 @@ export async function submitRegisterEntry(
     await createRegisterEntry(parsed.data);
     revalidatePath("/register");
     revalidatePath("/reports");
+    revalidatePath("/appointments", "layout");
+    revalidatePath("/clients", "layout");
+    revalidatePath("/inventory", "layout");
     return {
       success: true,
-      message: "La visite a bien été ajoutée au registre.",
+      message:
+        parsed.data.entryMode === "appointment"
+          ? parsed.data.paymentAmount > 0
+            ? "Le rendez-vous et son acompte ont été enregistrés."
+            : "Le rendez-vous non payé a été planifié."
+          : "La visite a bien été ajoutée au registre.",
       submissionId: Date.now(),
     };
   } catch (error) {
     return {
       success: false,
       message:
-        error instanceof RegisterDataError || error instanceof AccessDeniedError
+        error instanceof RegisterDataError ||
+        error instanceof AccessDeniedError ||
+        error instanceof InventoryDataError
           ? error.message
           : "Une erreur technique a empêché l’enregistrement de la visite.",
     };

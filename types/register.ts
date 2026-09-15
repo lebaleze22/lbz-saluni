@@ -1,4 +1,9 @@
-import type { AppointmentSource, PaymentMethod } from "@prisma/client";
+import type {
+  AppointmentSource,
+  AppointmentStatus,
+  PaymentMethod,
+  PaymentPurpose,
+} from "@prisma/client";
 
 export type StaffOption = {
   id: string;
@@ -24,12 +29,15 @@ export type ClientOption = {
   id: string;
   name: string;
   phone: string | null;
+  email?: string | null;
+  sex?: "homme" | "femme" | null;
 };
 
 export type RegisterEntry = {
   id: string;
   startTime: Date;
   source: AppointmentSource;
+  status: AppointmentStatus;
   client: ClientOption;
   staff: Pick<StaffOption, "id" | "name">;
   services: Array<{
@@ -37,10 +45,11 @@ export type RegisterEntry = {
     name: string;
     price: number;
   }>;
-  payment: {
+  payments: Array<{
     amount: number;
     method: PaymentMethod;
-  } | null;
+    purpose: PaymentPurpose;
+  }>;
 };
 
 export type RegisterPageData = {
@@ -48,4 +57,7 @@ export type RegisterPageData = {
   services: ServiceOption[];
   clients: ClientOption[];
   entries: RegisterEntry[];
+  serviceReceipts: number;
+  retailReceipts: number;
+  completedVisitCount: number;
 };

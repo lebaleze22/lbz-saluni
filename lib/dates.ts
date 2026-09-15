@@ -2,6 +2,17 @@ import type { ReportDateRange, ReportPeriod } from "@/types/reports";
 
 const DOUALA_OFFSET = "+01:00";
 
+export function dateTimeInDouala(now = new Date()): string {
+  return new Date(now.getTime() + 60 * 60 * 1000).toISOString().slice(0, 16);
+}
+
+export function doualaInputToIso(value: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return "";
+  const date = new Date(`${value}:00${DOUALA_OFFSET}`);
+  if (Number.isNaN(date.getTime()) || dateTimeInDouala(date) !== value) return "";
+  return date.toISOString();
+}
+
 export function todayInDouala(now = new Date()): string {
   return new Intl.DateTimeFormat("fr-CA", {
     year: "numeric",

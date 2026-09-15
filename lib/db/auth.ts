@@ -44,7 +44,7 @@ export async function requireAdminMember() {
       role: true,
       active: true,
       isDeleted: true,
-      tenant: { select: { name: true } },
+      tenant: { select: { name: true, active: true, isDeleted: true } },
       staffProfile: {
         select: { id: true, systemRole: true, active: true, isDeleted: true },
       },
@@ -57,6 +57,8 @@ export async function requireAdminMember() {
     !user ||
     !user.active ||
     user.isDeleted ||
+    !user.tenant.active ||
+    user.tenant.isDeleted ||
     !["owner", "salon_admin"].includes(user.role) ||
     !staffProfile ||
     !staffProfile.active ||

@@ -11,6 +11,8 @@ import {
 } from "@/lib/format";
 import { QuickEntryForm } from "@/app/(admin)/(director)/register/quick-entry-form";
 import { registerFiltersSchema } from "@/lib/validation/register";
+import Link from "next/link";
+import { APPOINTMENT_STATUS_LABELS } from "@/lib/appointments/status";
 
 export const dynamic = "force-dynamic";
 
@@ -28,11 +30,12 @@ function AccessMessage({ message }: { message: string }) {
 export default async function RegisterPage({
   searchParams,
 }: {
-  searchParams?: { date?: string; staff?: string };
+  searchParams?: { date?: string; staff?: string; clientId?: string };
 }) {
   const parsedFilters = registerFiltersSchema.safeParse({
     date: searchParams?.date ?? todayInDouala(),
     staffId: searchParams?.staff || undefined,
+    clientId: searchParams?.clientId || undefined,
   });
   const filters = parsedFilters.success
     ? parsedFilters.data
@@ -41,13 +44,13 @@ export default async function RegisterPage({
 
   let data;
   try {
-    data = await getRegisterPageData(date, staffFilter);
+    data = await getRegisterPageData(date, staffFilter, filters.clientId);
   } catch (error) {
     if (error instanceof AccessDeniedError) return <AccessMessage message={error.message} />;
     throw error;
   }
 
-  const dayTotal = data.entries.reduce((sum, entry) => sum + (entry.payment?.amount ?? 0), 0);
+  const dayTotal = data.serviceReceipts + data.retailReceipts;
 
   return (
     <main className="w-full px-4 py-8 sm:px-6 lg:px-8">
@@ -65,11 +68,12 @@ export default async function RegisterPage({
         </div>
         <div className="rounded-2xl border border-stone-200 bg-white px-5 py-4 shadow-sm">
           <p className="text-xs font-bold uppercase tracking-wider text-stone-400">
-            Chiffre du jour
+            Encaissements du jour
           </p>
           <p className="mt-1 text-2xl font-black text-emerald-950">{formatFcfa(dayTotal)}</p>
           <p className="mt-1 text-xs text-stone-500">
-            {data.entries.length} visite(s) enregistrée(s)
+            {data.completedVisitCount} visite(s) terminée(s) · {formatFcfa(data.retailReceipts)}{" "}
+            produits
           </p>
         </div>
       </div>
@@ -86,7 +90,13 @@ export default async function RegisterPage({
             </div>
           </div>
           {data.staff.length > 0 && data.services.length > 0 ? (
-            <QuickEntryForm staff={data.staff} services={data.services} clients={data.clients} />
+            <QuickEntryForm
+              key={filters.clientId ?? "new"}
+              staff={data.staff}
+              services={data.services}
+              clients={data.clients}
+              initialClientId={filters.clientId}
+            />
           ) : (
             <div className="rounded-xl bg-amber-50 p-4 text-sm leading-6 text-amber-900">
               Ajoutez au moins un membre du personnel et une prestation active avant de saisir une
@@ -151,46 +161,68 @@ export default async function RegisterPage({
             </div>
           ) : (
             <ol className="relative space-y-3 before:absolute before:bottom-5 before:left-[2.15rem] before:top-5 before:w-px before:bg-stone-200">
-              {data.entries.map((entry) => (
-                <li key={entry.id} className="relative grid grid-cols-[4.4rem_1fr] gap-3">
-                  <time className="z-10 self-start rounded-xl border border-stone-200 bg-white px-2 py-2 text-center text-sm font-black text-emerald-950 shadow-sm">
-                    {formatTimeFr(entry.startTime)}
-                  </time>
-                  <article className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
-                    <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-                      <div>
-                        <h3 className="flex items-center gap-2 font-black">
-                          <UserRound className="size-4 text-stone-400" /> {entry.client.name}
-                        </h3>
-                        <p className="mt-1 text-xs text-stone-500">
-                          {entry.staff.name} · {SOURCE_LABELS[entry.source]}
-                          {entry.client.phone ? ` · ${entry.client.phone}` : ""}
-                        </p>
-                      </div>
-                      {entry.payment && (
-                        <div className="sm:text-right">
-                          <p className="font-black text-emerald-950">
-                            {formatFcfa(entry.payment.amount)}
+              {data.entries.map((entry) => {
+                const paid = entry.payments.reduce((sum, payment) => sum + payment.amount, 0);
+                const plannedTotal = entry.services.reduce(
+                  (sum, service) => sum + service.price,
+                  0,
+                );
+                const balance = Math.max(0, plannedTotal - paid);
+                return (
+                  <li key={entry.id} className="relative grid grid-cols-[4.4rem_1fr] gap-3">
+                    <time className="z-10 self-start rounded-xl border border-stone-200 bg-white px-2 py-2 text-center text-sm font-black text-emerald-950 shadow-sm">
+                      {formatTimeFr(entry.startTime)}
+                    </time>
+                    <article className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
+                      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+                        <div>
+                          <h3 className="flex items-center gap-2 font-black">
+                            <UserRound className="size-4 text-stone-400" />{" "}
+                            <Link
+                              className="hover:text-emerald-800 hover:underline"
+                              href={`/clients/${entry.client.id}`}
+                            >
+                              {entry.client.name}
+                            </Link>
+                          </h3>
+                          <p className="mt-1 text-xs text-stone-500">
+                            {entry.staff.name} · {SOURCE_LABELS[entry.source]}
+                            {entry.client.phone ? ` · ${entry.client.phone}` : ""}
                           </p>
-                          <p className="text-xs text-stone-500">
-                            {PAYMENT_METHOD_LABELS[entry.payment.method]}
+                          <p className="mt-1 text-xs font-bold text-emerald-800">
+                            {APPOINTMENT_STATUS_LABELS[entry.status]} ·{" "}
+                            {paid === 0
+                              ? "Non payé"
+                              : balance === 0
+                                ? "Payé"
+                                : "Partiellement payé"}
                           </p>
                         </div>
-                      )}
-                    </div>
-                    <ul className="mt-3 divide-y divide-stone-100 rounded-xl bg-stone-50 px-3">
-                      {entry.services.map((service) => (
-                        <li key={service.id} className="flex justify-between gap-4 py-2 text-sm">
-                          <span className="text-stone-700">{service.name}</span>
-                          <span className="font-bold text-stone-900">
-                            {formatFcfa(service.price)}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </article>
-                </li>
-              ))}
+                        {paid > 0 && (
+                          <div className="sm:text-right">
+                            <p className="font-black text-emerald-950">{formatFcfa(paid)}</p>
+                            <p className="text-xs text-stone-500">
+                              {entry.payments
+                                .map((payment) => PAYMENT_METHOD_LABELS[payment.method])
+                                .join(" + ")}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      <ul className="mt-3 divide-y divide-stone-100 rounded-xl bg-stone-50 px-3">
+                        {entry.services.map((service) => (
+                          <li key={service.id} className="flex justify-between gap-4 py-2 text-sm">
+                            <span className="text-stone-700">{service.name}</span>
+                            <span className="font-bold text-stone-900">
+                              {formatFcfa(service.price)}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </article>
+                  </li>
+                );
+              })}
             </ol>
           )}
         </section>

@@ -29,6 +29,19 @@ export function generateReportWorkbook(report: ReportData): Buffer {
       Indicateur: "Chiffre d’affaires total",
       Valeur: formatFcfa(report.summary.totalRevenue),
     },
+    {
+      Indicateur: "Chiffre d’affaires prestations",
+      Valeur: formatFcfa(report.summary.serviceRevenue),
+    },
+    { Indicateur: "Chiffre d’affaires produits", Valeur: formatFcfa(report.summary.retailRevenue) },
+    { Indicateur: "Encaissements totaux", Valeur: formatFcfa(report.summary.totalCashReceived) },
+    { Indicateur: "Encaissements prestations", Valeur: formatFcfa(report.summary.serviceReceipts) },
+    { Indicateur: "Acomptes reçus", Valeur: formatFcfa(report.summary.advanceReceipts) },
+    { Indicateur: "Reçus de vente produit", Valeur: report.summary.retailSaleVolume },
+    ...report.summary.retailQuantitiesByUnit.map((item) => ({
+      Indicateur: `Quantité vendue — ${item.unit}`,
+      Valeur: Number(item.quantity),
+    })),
     { Indicateur: "Dépenses totales", Valeur: formatFcfa(report.summary.totalExpenses) },
     { Indicateur: "Résultat net", Valeur: formatFcfa(report.summary.netResult) },
     { Indicateur: "Nombre de prestations", Valeur: report.summary.serviceVolume },
@@ -36,6 +49,22 @@ export function generateReportWorkbook(report: ReportData): Buffer {
     { Indicateur: "Clients uniques", Valeur: report.summary.uniqueClients },
     { Indicateur: "Nouveaux clients", Valeur: report.summary.newClients },
     { Indicateur: "Clients récurrents", Valeur: report.summary.recurringClients },
+    { Indicateur: "Rendez-vous planifiés", Valeur: report.summary.appointmentOutcomes.scheduled },
+    { Indicateur: "Rendez-vous confirmés", Valeur: report.summary.appointmentOutcomes.confirmed },
+    { Indicateur: "Rendez-vous arrivés", Valeur: report.summary.appointmentOutcomes.arrived },
+    { Indicateur: "Rendez-vous terminés", Valeur: report.summary.appointmentOutcomes.completed },
+    { Indicateur: "Rendez-vous annulés", Valeur: report.summary.appointmentOutcomes.cancelled },
+    { Indicateur: "Rendez-vous absents", Valeur: report.summary.appointmentOutcomes.no_show },
+    { Indicateur: "Rendez-vous non payés", Valeur: report.summary.bookingPayments.unpaid },
+    {
+      Indicateur: "Rendez-vous partiellement payés",
+      Valeur: report.summary.bookingPayments.partial,
+    },
+    { Indicateur: "Rendez-vous payés", Valeur: report.summary.bookingPayments.paid },
+    {
+      Indicateur: "Solde restant des rendez-vous",
+      Valeur: formatFcfa(report.summary.bookingPayments.outstandingAmount),
+    },
     ...report.summary.paymentMethods.map((item) => ({
       Indicateur: `CA - ${item.label}`,
       Valeur: formatFcfa(item.amount),
@@ -66,9 +95,61 @@ export function generateReportWorkbook(report: ReportData): Buffer {
   ];
   const summarySheet = XLSX.utils.json_to_sheet(summary);
   summarySheet["!cols"] = [{ wch: 30 }, { wch: 28 }];
+  const retailSheet = XLSX.utils.json_to_sheet(
+    report.retailSales.map((sale) => ({
+      Date: sale.soldAt,
+      Heure: new Intl.DateTimeFormat("fr-FR", {
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "Africa/Douala",
+      }).format(sale.soldAt),
+      Produit: sale.productName,
+      Quantité: Number(sale.quantity),
+      Unité: sale.unit,
+      "Prix unitaire (FCFA)": sale.unitPrice,
+      "Total (FCFA)": sale.total,
+      Paiement: PAYMENT_METHOD_LABELS[sale.method],
+      Client: sale.clientName ?? "Sans fiche client",
+      "Enregistré par": sale.recordedByName,
+      "Référence reçu": sale.id,
+    })),
+    { cellDates: true },
+  );
+  retailSheet["!cols"] = [
+    { wch: 13 },
+    { wch: 8 },
+    { wch: 28 },
+    { wch: 12 },
+    { wch: 10 },
+    { wch: 22 },
+    { wch: 18 },
+    { wch: 18 },
+    { wch: 24 },
+    { wch: 24 },
+    { wch: 38 },
+  ];
+  const retailRange = XLSX.utils.decode_range(retailSheet["!ref"] ?? "A1:A1");
+  for (let row = 1; row <= retailRange.e.r; row += 1) {
+    for (const column of [5, 6]) {
+      const cell = retailSheet[XLSX.utils.encode_cell({ r: row, c: column })];
+      if (cell) cell.z = '# ##0 "FCFA"';
+    }
+  }
 
   XLSX.utils.book_append_sheet(workbook, summarySheet, "Synthèse");
   XLSX.utils.book_append_sheet(workbook, detailsSheet, "Prestations");
+  XLSX.utils.book_append_sheet(workbook, retailSheet, "Ventes produits");
+  const productSheet = XLSX.utils.json_to_sheet(
+    report.summary.products.map((product) => ({
+      Produit: product.label,
+      "Nombre de ventes": product.saleCount,
+      "Quantité vendue": Number(product.quantity),
+      Unité: product.unit,
+      "Chiffre d’affaires (FCFA)": product.amount,
+    })),
+  );
+  productSheet["!cols"] = [{ wch: 30 }, { wch: 18 }, { wch: 18 }, { wch: 12 }, { wch: 26 }];
+  XLSX.utils.book_append_sheet(workbook, productSheet, "Synthèse produits");
 
   return XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
 }

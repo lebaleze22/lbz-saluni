@@ -9,6 +9,7 @@
     "lint": "next lint",
     "test": "vitest run",
     "test:rls": "vitest run --config vitest.rls.config.ts",
+    "test:database": "node scripts/test-database.mjs",
     "seed:dev": "node scripts/seed-dev.mjs",
     "seed:owner:dev": "node scripts/seed-owner-dev.mjs",
     "initialize:client": "node scripts/initialize-client.mjs",

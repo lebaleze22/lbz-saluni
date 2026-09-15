@@ -59,6 +59,14 @@ export const staffCreateSchema = z
     password: optionalPassword,
   })
   .superRefine((value, context) => {
+    if (value.systemRole === "manager") {
+      context.addIssue({
+        code: "custom",
+        path: ["systemRole"],
+        message:
+          "L’espace Manager n’est pas encore disponible. Choisissez Director ou aucun accès.",
+      });
+    }
     const selected = new Set(value.jobTitleIds);
     if (selected.size !== value.jobTitleIds.length) {
       context.addIssue({
@@ -118,6 +126,13 @@ export const staffCreateSchema = z
         code: "custom",
         path: ["payAmount"],
         message: "Le salaire fixe doit être un montant entier en FCFA.",
+      });
+    }
+    if (value.payType === "fixed_salary" && value.payAmount > 2_147_483_647) {
+      context.addIssue({
+        code: "custom",
+        path: ["payAmount"],
+        message: "Le salaire dépasse le montant autorisé.",
       });
     }
     if (value.systemRole !== "none") {

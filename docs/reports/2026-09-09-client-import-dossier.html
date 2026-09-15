@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SALUNI · Client imports and dossiers</title>
+    <style>
+      body {
+        margin: 0;
+        background: #f5f4ed;
+        color: #203b2d;
+        font:
+          16px/1.7 system-ui,
+          sans-serif;
+      }
+      main {
+        max-width: 1000px;
+        margin: auto;
+        padding: 32px 24px;
+      }
+      header {
+        background: #173f2c;
+        color: white;
+        border-radius: 18px;
+        padding: 32px;
+      }
+      section {
+        background: white;
+        padding: 24px;
+        margin-top: 20px;
+        border-radius: 14px;
+      }
+      h1,
+      h2 {
+        line-height: 1.2;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 12px;
+        border-bottom: 1px solid #ddd;
+      }
+      a {
+        color: #287151;
+      }
+      code {
+        overflow-wrap: anywhere;
+      }
+      @media print {
+        body {
+          background: white;
+        }
+        section {
+          break-inside: avoid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p>SALUNI · Sprint delivery · 9 September 2026</p>
+        <h1>Client list import/export and individual dossiers</h1>
+        <p>Deployed locally at http://localhost:54321 for Owner and Director accounts.</p>
+      </header>
+      <section>
+        <h2>Import a client list</h2>
+        <ol>
+          <li>
+            Open <a href="http://localhost:54321/clients">Clients</a> and expand
+            <strong>Importer / exporter des clients</strong>.
+          </li>
+          <li>
+            Download the CSV or Excel template. Keep its column headers and add your clients. Use
+            text formatting for phone numbers to preserve country codes and leading zeros.
+          </li>
+          <li>
+            Select your file and choose <strong>Vérifier le fichier</strong>. Review the first ten
+            rows, the proposed additions and duplicate count.
+          </li>
+          <li>
+            If errors are listed, correct the indicated rows and reload the file. Invalid imports
+            write no records.
+          </li>
+          <li>
+            Choose <strong>Confirmer l’import</strong>. The final result shows how many clients were
+            added or skipped.
+          </li>
+        </ol>
+        <p>
+          Accepted formats: CSV, XLSX and XLS. Limits: 2 MB, 1,000 client rows and one worksheet per
+          file. Excel formulas must be replaced with values. Larger lists can be split into files.
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>Column</th>
+              <th>Meaning</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Nom</td>
+              <td>Required client name.</td>
+            </tr>
+            <tr>
+              <td>Téléphone</td>
+              <td>Optional phone number, preferably stored as text.</td>
+            </tr>
+            <tr>
+              <td>Email</td>
+              <td>Optional valid email address.</td>
+            </tr>
+            <tr>
+              <td>Sexe</td>
+              <td>Optional femme/homme; F/M and female/male are accepted.</td>
+            </tr>
+            <tr>
+              <td>Préférences</td>
+              <td>Optional preferred services, products and habits.</td>
+            </tr>
+            <tr>
+              <td>Allergies</td>
+              <td>Optional precautions reported by the client.</td>
+            </tr>
+            <tr>
+              <td>Notes</td>
+              <td>Optional internal notes.</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          English column equivalents are accepted. Unknown or repeated headers are rejected to avoid
+          silently losing information.
+        </p>
+        <p>
+          Imports use the existing normalized name + phone + email + sex rule. Exact duplicates
+          already in the salon, including archived clients, or repeated inside the file are skipped.
+          Existing profiles and notes are never overwritten. Import confirmation checks again inside
+          a transaction, so a client added after the preview is not duplicated.
+        </p>
+      </section>
+      <section>
+        <h2>Export client lists</h2>
+        <p>
+          In the same panel, select active, archived or all client files, choose CSV or Excel, and
+          click <strong>Télécharger</strong>. The export includes all records in that status
+          selection; page search filters and pagination do not restrict it.
+        </p>
+        <p>
+          Exports include coordinates, preferences, allergies and internal notes. Visit and journal
+          histories remain in the individual dossier. CSV exports protect formula-like text, and
+          XLSX cells store client values as text. Exports are not full database backups: internal
+          IDs, archive status, visits and journal entries are not included in the import template.
+        </p>
+      </section>
+      <section>
+        <h2>Use the client dossier</h2>
+        <p>
+          Click a client’s name in the directory to open <strong>Dossier client</strong>. It brings
+          together:
+        </p>
+        <ul>
+          <li>Contact details and editable profile information.</li>
+          <li>Preferences, internal notes and prominently displayed allergies.</li>
+          <li>Visit count and total payments received.</li>
+          <li>
+            Visit history with date, staff member, services, prices, payment methods and recorded
+            product consumption.
+          </li>
+          <li>
+            A dated follow-up journal for consultations, preferences, follow-up and observations.
+          </li>
+        </ul>
+        <p>
+          To add a journal entry, choose a category, enter the event date/time in Douala and write
+          the observation. Each entry preserves its author and creation timestamp. Entries cannot be
+          edited or deleted through the application; add a correction entry when needed. Preference
+          journal entries document changes; update the profile’s preferences field separately to
+          change the current summary.
+        </p>
+        <p>
+          Visit history and journal entries have independent pagination. Archived dossiers retain
+          their history and journal; restore the client before adding a new observation. The
+          existing <strong>Enregistrer une visite</strong> button opens the register with that
+          client selected.
+        </p>
+      </section>
+      <section>
+        <h2>Validation and deployment</h2>
+        <p>
+          Passed: 61 unit tests, 19 database tests, 11 Auth/RLS tests and 20 authenticated HTTP
+          checks. Production and Docker builds passed lint and TypeScript validation. Tests cover
+          file round trips, validation failures, duplicate skipping, preview without writes, tenant
+          isolation, journal authorship, archived clients, export permissions and cross-origin
+          import rejection.
+        </p>
+        <p>
+          All 26 migrations applied successfully to a disposable database. Migration
+          <code>20260909120000_client_activities</code> was then applied to the local salon database
+          after saving <code>docs/backups/saluni-before-client-journal-20260909.dump</code>,
+          excluded from Git and Docker build context.
+        </p>
+        <p>
+          The local app and proxy were rebuilt/recreated and are healthy. Five additional checks
+          using the existing local Owner verified controls, a real client dossier, both template
+          downloads and preview-only upload. No test clients were added locally. Visual browser
+          verification remains unavailable.
+        </p>
+        <p>
+          The journal uses tenant-scoped foreign keys, forced row-level security and append-only
+          runtime grants. This delivery adds one database table and does not rewrite existing
+          records. No client Mac/VPS release or Git commit was created.
+        </p>
+        <p>
+          <a href="2026-09-09-client-identity.html">Four-field identity rules</a> ·
+          <a href="2026-09-08-clients-inventory.html">Clients and inventory report</a>
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

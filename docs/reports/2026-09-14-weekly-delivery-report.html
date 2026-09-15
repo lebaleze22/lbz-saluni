@@ -1,0 +1,869 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Complete SALUNI delivery report for 7–13 September 2026, covering stabilization, clients, inventory, product sales, appointments, security, testing, and local deployment."
+    />
+    <title>SALUNI · Weekly delivery report · 7–13 September 2026</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #18382c;
+        --green: #1f684a;
+        --green-dark: #123c2b;
+        --pale: #edf6ef;
+        --paper: #ffffff;
+        --ground: #f2f0e7;
+        --line: #d6ddd7;
+        --amber: #9a6517;
+        --blue: #275d77;
+        --muted: #5e6b64;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        margin: 0;
+        background: var(--ground);
+        color: var(--ink);
+        font:
+          16px/1.65 system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+      main {
+        width: min(1120px, calc(100% - 32px));
+        margin: 32px auto 72px;
+      }
+      header,
+      section,
+      nav {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+      }
+      header {
+        padding: clamp(30px, 6vw, 64px);
+        color: white;
+        background:
+          radial-gradient(circle at 88% 15%, rgb(255 255 255 / 14%), transparent 25%),
+          linear-gradient(135deg, #123c2b, #247253);
+      }
+      header p {
+        max-width: 820px;
+      }
+      h1 {
+        margin: 8px 0 16px;
+        max-width: 900px;
+        font-size: clamp(2.25rem, 6vw, 4.6rem);
+        line-height: 1.03;
+      }
+      h2 {
+        margin: 0 0 14px;
+        font-size: clamp(1.45rem, 3vw, 2rem);
+        line-height: 1.2;
+      }
+      h3 {
+        margin: 0 0 7px;
+        font-size: 1.08rem;
+      }
+      p {
+        margin: 0 0 14px;
+      }
+      .eyebrow {
+        margin: 0;
+        font-size: 0.8rem;
+        font-weight: 850;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+      }
+      .status {
+        display: inline-block;
+        margin: 10px 0 0;
+        padding: 8px 14px;
+        border-radius: 999px;
+        color: #123c2b;
+        background: #dff5e6;
+        font-weight: 850;
+      }
+      nav {
+        position: sticky;
+        top: 8px;
+        z-index: 2;
+        display: flex;
+        gap: 8px;
+        margin-top: 16px;
+        padding: 10px;
+        overflow-x: auto;
+        background: rgb(255 255 255 / 94%);
+        backdrop-filter: blur(10px);
+      }
+      nav a {
+        flex: 0 0 auto;
+        padding: 7px 11px;
+        border-radius: 999px;
+        color: var(--green-dark);
+        background: var(--pale);
+        font-size: 0.86rem;
+        font-weight: 750;
+        text-decoration: none;
+      }
+      section {
+        margin-top: 20px;
+        padding: clamp(22px, 4vw, 38px);
+        background: var(--paper);
+      }
+      .grid,
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        gap: 14px;
+      }
+      .card,
+      .metric {
+        padding: 18px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: #fbfcfa;
+      }
+      .metric strong {
+        display: block;
+        color: var(--green);
+        font-size: 2.15rem;
+        line-height: 1;
+      }
+      .metric span {
+        display: block;
+        margin-top: 8px;
+        color: var(--muted);
+      }
+      .tag {
+        display: inline-block;
+        margin-bottom: 9px;
+        padding: 3px 9px;
+        border-radius: 999px;
+        color: var(--blue);
+        background: #eaf4f8;
+        font-size: 0.77rem;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+      .timeline {
+        display: grid;
+        gap: 15px;
+      }
+      .timeline article {
+        display: grid;
+        grid-template-columns: 110px 1fr;
+        gap: 18px;
+        padding: 18px 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .timeline article:last-child {
+        border-bottom: 0;
+      }
+      .date {
+        color: var(--green);
+        font-weight: 850;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        padding: 12px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        color: var(--green-dark);
+        background: var(--pale);
+      }
+      ul,
+      ol {
+        padding-left: 1.35rem;
+      }
+      li + li {
+        margin-top: 7px;
+      }
+      a {
+        color: var(--green);
+        text-underline-offset: 3px;
+      }
+      code {
+        overflow-wrap: anywhere;
+        color: #244c3b;
+        background: #f0f4f1;
+      }
+      .note,
+      .limit {
+        margin-top: 18px;
+        padding: 15px 18px;
+        border-left: 4px solid var(--green);
+        background: var(--pale);
+      }
+      .limit {
+        border-left-color: var(--amber);
+        background: #fff8e8;
+      }
+      .flow {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 9px;
+        margin: 18px 0;
+      }
+      .flow span {
+        padding: 10px 13px;
+        border: 1px solid #bdd4c5;
+        border-radius: 10px;
+        background: var(--pale);
+        font-weight: 750;
+      }
+      .flow b {
+        color: var(--green);
+      }
+      .small {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+      @media (max-width: 700px) {
+        main {
+          width: min(100% - 20px, 1120px);
+          margin-top: 10px;
+        }
+        .timeline article {
+          grid-template-columns: 1fr;
+          gap: 5px;
+        }
+        table {
+          display: block;
+          overflow-x: auto;
+        }
+      }
+      @media print {
+        body {
+          background: white;
+        }
+        main {
+          width: 100%;
+          margin: 0;
+        }
+        nav {
+          display: none;
+        }
+        section {
+          break-inside: avoid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">SALUNI · Weekly checkpoint · Africa/Douala</p>
+        <h1>Delivery report for 7–13 September 2026</h1>
+        <p>
+          Last week moved SALUNI from a stabilized operating base to connected client, stock,
+          retail-sale, and appointment workflows. This report records what was delivered, how the
+          parts work together, what was verified, and the exact boundary of the current system.
+        </p>
+        <p class="status">Implemented, tested, migrated, backed up, and running locally</p>
+      </header>
+
+      <nav aria-label="Report sections">
+        <a href="#summary">Summary</a>
+        <a href="#timeline">Timeline</a>
+        <a href="#clients">Clients</a>
+        <a href="#inventory">Inventory</a>
+        <a href="#sales">Product sales</a>
+        <a href="#appointments">Appointments</a>
+        <a href="#stability">Stability</a>
+        <a href="#verification">Verification</a>
+        <a href="#deployment">Deployment</a>
+        <a href="#next">Next-week baseline</a>
+      </nav>
+
+      <section id="summary">
+        <h2>Executive summary</h2>
+        <div class="metrics">
+          <article class="metric">
+            <strong>7</strong><span>documented delivery checkpoints</span>
+          </article>
+          <article class="metric">
+            <strong>4</strong><span>connected operational areas added</span>
+          </article>
+          <article class="metric">
+            <strong>5</strong><span>additive database migrations delivered</span>
+          </article>
+          <article class="metric">
+            <strong>29</strong><span>total migrations replayed successfully</span>
+          </article>
+          <article class="metric">
+            <strong>78</strong><span>unit tests passing at final checkpoint</span>
+          </article>
+          <article class="metric">
+            <strong>29 + 11</strong><span>database scenarios and Auth/RLS checks passing</span>
+          </article>
+          <article class="metric">
+            <strong>40</strong><span>authenticated HTTP and access checks passing</span>
+          </article>
+          <article class="metric">
+            <strong>6</strong><span>pre-change database backups retained privately</span>
+          </article>
+        </div>
+        <p class="note">
+          The resulting workflow is connected end to end: a client can be identified, imported,
+          documented, referred, scheduled, served, charged, and associated with service or retail
+          stock movements. Reports now distinguish service revenue and product revenue and include
+          appointment outcomes.
+        </p>
+      </section>
+
+      <section id="timeline">
+        <h2>Delivery timeline</h2>
+        <div class="timeline">
+          <article>
+            <div class="date">8 September</div>
+            <div>
+              <h3>Full checkpoint and stabilization review</h3>
+              <p>
+                Reviewed the existing register, services, expenses, reports, staff, job titles,
+                access model, local Docker architecture, deployment scripts, migrations, and known
+                cahier des charges gaps. Established the working baseline before adding features.
+              </p>
+              <a href="2026-09-08-saluni-checkpoint.html">Open the complete checkpoint report</a>
+            </div>
+          </article>
+          <article>
+            <div class="date">8 September</div>
+            <div>
+              <h3>Client management and inventory foundation</h3>
+              <p>
+                Added client profiles, histories and inactivity segments; product catalogue, exact
+                quantities, low-stock alerts and movement history; service recipes; and automatic,
+                atomic stock consumption when a visit is recorded.
+              </p>
+              <a href="2026-09-08-clients-inventory.html">Open the client and inventory report</a>
+            </div>
+          </article>
+          <article>
+            <div class="date">9 September</div>
+            <div>
+              <h3>Client identity strengthened</h3>
+              <p>
+                Replaced unsafe name-only assumptions with a combined four-field duplicate check:
+                normalized name, phone, email and sex. Namesakes and shared contact details can
+                remain separate when another identity attribute differs.
+              </p>
+              <a href="2026-09-09-client-identity.html">Open the client identity report</a>
+            </div>
+          </article>
+          <article>
+            <div class="date">9 September</div>
+            <div>
+              <h3>Client file import/export and dossier journal</h3>
+              <p>
+                Added CSV/XLS/XLSX preview and import, CSV/Excel export, downloadable templates,
+                duplicate skipping, transactional confirmation, and an append-only client activity
+                journal for consultations, preferences, follow-up and observations.
+              </p>
+              <a href="2026-09-09-client-import-dossier.html">Open the import and dossier report</a>
+            </div>
+          </article>
+          <article>
+            <div class="date">10 September</div>
+            <div>
+              <h3>Addresses, acquisition sources and referrals</h3>
+              <p>
+                Extended client profiles and file transfers with city, neighbourhood, directions,
+                discovery source and details, plus recommendations linked to an existing client or
+                recorded as free text.
+              </p>
+              <a href="2026-09-10-client-address-discovery.html"
+                >Open the address and discovery report</a
+              >
+            </div>
+          </article>
+          <article>
+            <div class="date">10 September</div>
+            <div>
+              <h3>Retail product sales</h3>
+              <p>
+                Added stock-linked product sales with permanent receipts, optional client linking,
+                payment method, stale-price checks, concurrency protection, idempotent submission,
+                client purchase history, and revenue reporting/export integration.
+              </p>
+              <a href="2026-09-10-product-sales.html">Open the product sales report</a>
+            </div>
+          </article>
+          <article>
+            <div class="date">10 September</div>
+            <div>
+              <h3>Inventory import and appointment calendar</h3>
+              <p>
+                Added atomic CSV/Excel stock reconciliation and then delivered daily/weekly
+                appointment scheduling, lifecycle statuses, staff-overlap prevention, arrival and
+                checkout, client appointment history, and outcome reporting.
+              </p>
+              <a href="2026-09-10-inventory-import.html">Open the inventory import report</a>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="clients">
+        <span class="tag">Operational area 1</span>
+        <h2>Client management</h2>
+        <div class="grid">
+          <article class="card">
+            <h3>Directory and profiles</h3>
+            <p>
+              Owner and Director can create, search, filter, edit, archive, restore, and open client
+              dossiers. Profiles include name, phone, email, sex, preferences, allergies,
+              precautions, internal notes, and address details.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Identity and duplicate control</h3>
+            <p>
+              Duplicate detection compares normalized name, phone, email and sex together within one
+              salon. Exact matches are blocked or reused; a difference in any field permits a
+              distinct client. Archived matches must be restored.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Segmentation</h3>
+            <p>
+              Filters identify recent clients, clients to contact again, and clients who have never
+              visited. The inactivity period is configurable and defaults to 90 days using the
+              Douala day boundary.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Acquisition and referrals</h3>
+            <p>
+              Profiles record recommendation, search, social media, passing the salon,
+              advertisement, other, or unknown. A recommendation can link to an existing dossier or
+              preserve an external recommender name.
+            </p>
+          </article>
+        </div>
+        <h3>Client dossier contents</h3>
+        <ul>
+          <li>Contact, address, preferences, allergies, internal notes, and acquisition source.</li>
+          <li>Visit count, service history, staff, prices, payments, and products consumed.</li>
+          <li>
+            Retail purchase history and receipt totals when the sale was linked to the client.
+          </li>
+          <li>
+            Appointment history for scheduled, confirmed, arrived, cancelled, and no-show records.
+          </li>
+          <li>Completed appointments appear as visits, keeping financial history in one place.</li>
+          <li>
+            An append-only activity journal preserving category, event time, author, and creation
+            time.
+          </li>
+        </ul>
+        <h3>Client list file transfers</h3>
+        <p>
+          CSV, XLS and XLSX files support up to 1,000 client rows and 2 MB. The workflow previews
+          before writing, reports errors by row, skips exact duplicates, rechecks inside the commit
+          transaction, and never overwrites an existing matching profile. Exports can include
+          active, archived, or all clients and protect spreadsheet text values.
+        </p>
+        <p>Use the live directory at <a href="http://localhost:54321/clients">Clients</a>.</p>
+      </section>
+
+      <section id="inventory">
+        <span class="tag">Operational area 2</span>
+        <h2>Inventory and service consumption</h2>
+        <div class="grid">
+          <article class="card">
+            <h3>Product catalogue</h3>
+            <p>
+              Products carry a name, SKU, unit, cost price, sale price, available quantity,
+              low-stock threshold, and status. Quantities retain three decimal places.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Audited movements</h3>
+            <p>
+              Opening stock, receipts, outgoing quantities, physical counts, service consumption,
+              and product sales record the operator, reason, delta, resulting balance, product,
+              unit, and historical cost information.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Service recipes</h3>
+            <p>
+              Each service can consume configured product quantities. A recorded visit combines all
+              required products and deducts them in the same transaction as the visit and payment.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Stock protection</h3>
+            <p>
+              Insufficient stock rejects the entire operation. Product row locks serialize
+              concurrent deductions, database constraints prevent negative balances, and movement
+              history remains append-only.
+            </p>
+          </article>
+        </div>
+        <h3>Inventory file import</h3>
+        <p>
+          CSV, XLS and XLSX import can create products, update catalogue fields, and reconcile a
+          physical stock count. Product ID takes priority, otherwise SKU matches case-insensitively.
+          Reimporting the same file reports unchanged rows instead of duplicating products.
+        </p>
+        <p>
+          Preview reports created, updated, unchanged and rejected rows. Confirmation locks target
+          products in a stable order and commits the whole file atomically. Invalid money,
+          quantities, formulas, columns, duplicate targets, foreign IDs and illegal archive/unit
+          changes are rejected. The stock column represents the physical total, not an amount to
+          add.
+        </p>
+        <p>
+          Use the live inventory at <a href="http://localhost:54321/inventory">Stock</a> and service
+          recipes at
+          <a href="http://localhost:54321/inventory/recipes">Consommations par prestation</a>.
+        </p>
+      </section>
+
+      <section id="sales">
+        <span class="tag">Operational area 3</span>
+        <h2>Retail product sales</h2>
+        <div class="flow" aria-label="Retail transaction sequence">
+          <span>Validate request</span><b>→</b><span>Lock stock</span><b>→</b
+          ><span>Deduct quantity</span><b>→</b><span>Record movement</span><b>→</b
+          ><span>Create permanent receipt</span>
+        </div>
+        <ul>
+          <li>Sell active products that have stock and a configured selling price.</li>
+          <li>Choose quantity, optional client, and Cash, Orange Money, or MTN MoMo.</li>
+          <li>Reject insufficient stock and stale prices without a partial receipt or movement.</li>
+          <li>Use a request identifier so repeated submission returns the same receipt.</li>
+          <li>Allow only one competing sale to obtain the last available quantity.</li>
+          <li>
+            Preserve immutable receipts and tenant-scoped client, seller, and stock relationships.
+          </li>
+        </ul>
+        <p>
+          Reports now show total turnover as service receipts plus retail receipts while retaining
+          separate service and product totals. Excel adds a <strong>Ventes produits</strong>
+          worksheet, and PDF includes the same sales summary and details. Linked purchases appear in
+          the client dossier.
+        </p>
+        <p>
+          Use the live sales screen at
+          <a href="http://localhost:54321/sales">Ventes de produits</a>.
+        </p>
+      </section>
+
+      <section id="appointments">
+        <span class="tag">Operational area 4</span>
+        <h2>Appointment scheduling and salon calendar</h2>
+        <div class="grid">
+          <article class="card">
+            <h3>Calendar</h3>
+            <p>
+              Daily and weekly views can be filtered by date, staff member, service, and status. The
+              screen highlights upcoming and late appointments for the current day.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Booking</h3>
+            <p>
+              Create an appointment for an existing client or create a client during booking. Add
+              services, staff, date, time, duration, and internal notes.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Lifecycle</h3>
+            <p>
+              Supported statuses are scheduled, confirmed, arrived, completed, cancelled, and
+              no-show. Outcome totals feed weekly, monthly, and quarterly reporting.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Collision prevention</h3>
+            <p>
+              The database rejects overlapping active appointments for the same staff member,
+              including concurrent requests. Adjacent appointments remain valid.
+            </p>
+          </article>
+        </div>
+        <h3>Arrival and checkout</h3>
+        <p>
+          An arrived appointment can be completed without re-entering the client, staff, services,
+          time, or notes. Checkout creates the payment, consumes service recipe stock, timestamps
+          completion, and changes the status in one transaction. Repeated completion is idempotent.
+        </p>
+        <p>
+          Only completed appointments contribute service revenue, visits, and client segments.
+          Cancelled and no-show records remain visible in the client dossier and appointment outcome
+          report. This keeps operational history without inflating financial results.
+        </p>
+        <p>Use the live calendar at <a href="http://localhost:54321/appointments">Agenda</a>.</p>
+      </section>
+
+      <section id="stability">
+        <h2>Stabilization and cross-feature corrections</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Area</th>
+              <th>Correction or rule established</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Register identity</td>
+              <td>
+                Explicit client selection and four-field matching replaced unsafe name-only reuse.
+              </td>
+            </tr>
+            <tr>
+              <td>Archived data</td>
+              <td>
+                Archived clients, staff, services and products are excluded from new operational
+                selections while retaining history.
+              </td>
+            </tr>
+            <tr>
+              <td>Transactions</td>
+              <td>
+                Visits, payments, sales, imports, appointment completion and stock deductions commit
+                atomically.
+              </td>
+            </tr>
+            <tr>
+              <td>Concurrency</td>
+              <td>
+                Identity creation locks, product locks, idempotency keys and appointment exclusion
+                constraints protect simultaneous work.
+              </td>
+            </tr>
+            <tr>
+              <td>Tenant access</td>
+              <td>
+                Tenant-aware foreign keys, runtime tenant transactions, role guards and forced
+                row-level security cover the new data.
+              </td>
+            </tr>
+            <tr>
+              <td>Time and money</td>
+              <td>
+                Operational dates use Africa/Douala boundaries; FCFA inputs respect PostgreSQL
+                integer capacity; stock uses exact thousandths.
+              </td>
+            </tr>
+            <tr>
+              <td>Reports</td>
+              <td>
+                Completed appointments drive service metrics, retail sales are separated, and
+                cancelled/no-show outcomes remain visible.
+              </td>
+            </tr>
+            <tr>
+              <td>Navigation</td>
+              <td>
+                Clients, Stock, Product sales and Agenda were added to the admin navigation with
+                mobile overflow support.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="verification">
+        <h2>Final verification evidence</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Layer</th>
+              <th>Final result</th>
+              <th>Coverage</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Unit and pure-logic suite</td>
+              <td>17 files, 78 tests passed</td>
+              <td>
+                Validation, dates, identity, CSV/Excel parsing, quantities, report aggregation,
+                retail totals, and appointment inputs.
+              </td>
+            </tr>
+            <tr>
+              <td>Disposable PostgreSQL suite</td>
+              <td>29 scenarios passed</td>
+              <td>
+                Client/inventory flows, imports, sales, appointments, concurrency, atomic rollback,
+                dossier integration, and reporting.
+              </td>
+            </tr>
+            <tr>
+              <td>Auth and row-level security</td>
+              <td>11 checks passed</td>
+              <td>
+                Real Auth identities, tenant isolation, runtime restrictions, and role behavior.
+              </td>
+            </tr>
+            <tr>
+              <td>Authenticated application checks</td>
+              <td>40 checks passed</td>
+              <td>
+                Owner/Director rendering, Manager guards, client and inventory file transfers, sales
+                receipts, appointments, reports, PDF and Excel exports.
+              </td>
+            </tr>
+            <tr>
+              <td>Migration replay</td>
+              <td>29 of 29 applied</td>
+              <td>
+                Fresh PostgreSQL 16 database from the first migration through appointment calendar.
+              </td>
+            </tr>
+            <tr>
+              <td>Production build</td>
+              <td>Passed</td>
+              <td>
+                Next.js compilation, lint, TypeScript validation, page generation, and production
+                container build.
+              </td>
+            </tr>
+            <tr>
+              <td>Live owner smoke test</td>
+              <td>Passed after deployment</td>
+              <td>
+                <code>/sales</code>, <code>/appointments</code>, <code>/reports</code>,
+                <code>/inventory</code>, and CSV/XLSX inventory templates.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="limit">
+          Automated verification covered server behavior and authenticated HTTP rendering. The
+          in-app browser was unavailable, so this evidence does not include a visual layout or
+          click-by-click browser review. Live deployment checks were read-only: they did not create
+          an operational appointment, sale, stock import, or client.
+        </p>
+      </section>
+
+      <section id="deployment">
+        <h2>Database, backups, and local deployment</h2>
+        <p>
+          Five additive migrations were introduced during the week: client/inventory, client
+          activities, address/discovery, retail sales, and appointment calendar. The inventory file
+          import reused the existing schema. The local database now contains all 29 migrations.
+        </p>
+        <ul>
+          <li><code>saluni-before-clients-inventory-20260908.dump</code></li>
+          <li><code>saluni-before-client-journal-20260909.dump</code></li>
+          <li><code>saluni-before-client-address-20260910.dump</code></li>
+          <li><code>saluni-before-retail-sales-20260910.dump</code></li>
+          <li><code>saluni-before-inventory-import-20260910.dump</code></li>
+          <li><code>saluni-before-appointment-calendar-20260910.dump</code></li>
+        </ul>
+        <p>
+          Backups are retained under <code>docs/backups</code>, excluded from Git and the Docker
+          build context. The production application image was rebuilt after each delivery and the
+          local <code>core-api</code> and <code>nginx</code> services were recreated healthy at
+          <a href="http://localhost:54321">http://localhost:54321</a>.
+        </p>
+        <p class="limit">
+          Delivery was made to the local development salon stack. No client Mac release, VPS
+          publication, Git commit, or remote release was created during these checkpoints. The
+          working tree contains the delivered implementation and remains uncommitted as of this
+          report.
+        </p>
+      </section>
+
+      <section id="next">
+        <h2>Baseline for the new week</h2>
+        <p>
+          The current working baseline includes a usable client directory and dossier, service and
+          retail stock accounting, bulk client and inventory transfers, product receipts, and an
+          operational appointment calendar. These areas share the same tenant security, reports,
+          client histories, and stock ledger.
+        </p>
+        <h3>Known boundaries carried forward</h3>
+        <ul>
+          <li>SMS and WhatsApp appointment reminders are not implemented.</li>
+          <li>Retail refunds and cancellations need a future compensating-record workflow.</li>
+          <li>Client imports skip matching profiles; they do not bulk-update existing dossiers.</li>
+          <li>
+            Historical service product use before inventory tracking was introduced is not
+            reconstructed.
+          </li>
+          <li>
+            The final visual browser walkthrough remains outstanding because browser control was
+            unavailable.
+          </li>
+          <li>
+            A Git checkpoint should be created when the current combined delivery is ready to be
+            versioned.
+          </li>
+        </ul>
+        <p>
+          This report is the checkpoint to use before selecting and approving the first feature of
+          the new week.
+        </p>
+      </section>
+
+      <section>
+        <h2>Detailed report index</h2>
+        <ol>
+          <li>
+            <a href="2026-09-08-saluni-checkpoint.html"
+              >Project checkpoint and existing-system review</a
+            >
+          </li>
+          <li>
+            <a href="2026-09-08-clients-inventory.html"
+              >Client management, inventory, and register stabilization</a
+            >
+          </li>
+          <li>
+            <a href="2026-09-09-client-identity.html"
+              >Four-field client identity and duplicate rules</a
+            >
+          </li>
+          <li>
+            <a href="2026-09-09-client-import-dossier.html"
+              >Client CSV/Excel import, export, dossier, and activity journal</a
+            >
+          </li>
+          <li>
+            <a href="2026-09-10-client-address-discovery.html"
+              >Client addresses, discovery sources, and referrals</a
+            >
+          </li>
+          <li>
+            <a href="2026-09-10-product-sales.html"
+              >Product sales, receipts, stock, and reporting</a
+            >
+          </li>
+          <li>
+            <a href="2026-09-10-inventory-import.html"
+              >Inventory CSV/Excel import and reconciliation</a
+            >
+          </li>
+        </ol>
+        <p class="small">
+          Report generated 14 September 2026 · SALUNI local workspace · Africa/Douala.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

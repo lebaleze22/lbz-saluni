@@ -7,9 +7,8 @@
 #   up -d` démarre sans rebuild local.
 #
 # Réseau "lbz-internal" nommé explicitement (pas le réseau par défaut généré par
-# Compose à partir du nom du projet) : whatsapp-agent (Étape 6) le rejoindra plus tard
-# en s'y déclarant, sans que ce fichier ait besoin d'être restructuré. Seul nginx publie
-# un port sur l'hôte ; core-api (et, plus tard, whatsapp-agent) ne sont joignables que
+# Compose à partir du nom du projet). Seul nginx publie un port sur l'hôte ; core-api
+# n'est joignable que
 # depuis ce réseau interne, jamais directement depuis l'extérieur — voir
 # docs/architecture/011-auth-inter-services.md.
 #
@@ -61,21 +60,6 @@ services:
         condition: service_healthy
     networks:
       - lbz-internal
-
-  # --- Étape 6 : whatsapp-agent (pas encore créé) ---------------------------------
-  # whatsapp-agent:
-  #   build:
-  #     context: ../whatsapp-agent
-  #   image: ghcr.io/${GHCR_OWNER:-lbz}/lbz-whatsapp-agent:latest
-  #   container_name: lbz-whatsapp-agent
-  #   restart: unless-stopped
-  #   env_file:
-  #     - .env.whatsapp-agent
-  #   expose:
-  #     - "3001"
-  #   networks:
-  #     - lbz-internal
-  # ---------------------------------------------------------------------------------
 
 networks:
   lbz-internal:

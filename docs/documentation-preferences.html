@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="SALUNI documentation format preference, recorded 8 September 2026."
+    />
+    <title>SALUNI · Documentation preferences</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: system-ui, sans-serif;
+        color: #18382e;
+        background: #f5f4ed;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 40px 20px;
+        line-height: 1.7;
+      }
+      main {
+        max-width: 780px;
+        margin: auto;
+        padding: clamp(24px, 5vw, 56px);
+        background: white;
+        border: 1px solid #d9dfd7;
+        border-radius: 20px;
+      }
+      .eyebrow {
+        font-size: 0.78rem;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+        font-weight: 750;
+      }
+      h1 {
+        line-height: 1.15;
+        font-size: clamp(2rem, 5vw, 3rem);
+      }
+      h2 {
+        font-size: 1.2rem;
+        margin-top: 30px;
+      }
+      .rule {
+        padding: 20px;
+        border-left: 4px solid #246647;
+        background: #edf5ee;
+        font-size: 1.15rem;
+      }
+      a {
+        color: #205c42;
+        text-underline-offset: 3px;
+      }
+      code {
+        font-size: 0.9em;
+        overflow-wrap: anywhere;
+      }
+      li + li {
+        margin-top: 8px;
+      }
+      @media print {
+        body {
+          background: white;
+          padding: 0;
+        }
+        main {
+          border: 0;
+          padding: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">SALUNI / Working preference</p>
+      <h1>Documentation in HTML</h1>
+      <p>Recorded on <time datetime="2026-09-08">8 September 2026</time>, at the user's request.</p>
+      <p class="rule">
+        Produce requested document files in <strong>HTML (.html)</strong> by default. Do not create
+        Markdown (.md) deliverables.
+      </p>
+      <h2>Applies to</h2>
+      <p>
+        Reports, checkpoint reports, details, summaries, drafts, schemas, diagrams, plans,
+        specifications, guides, and similar written deliverables.
+      </p>
+      <h2>Delivery conventions</h2>
+      <ul>
+        <li>Provide a direct link to the finished HTML file.</li>
+        <li>
+          Use UTF-8, clear navigation for long documents, readable tables, and responsive layouts.
+        </li>
+        <li>
+          Prefer a standalone file with embedded styles and no network dependency for reading it.
+        </li>
+        <li>
+          Include a date, scope, and source references where they help the reader assess a report.
+        </li>
+        <li>Use HTML and inline SVG or CSS for document diagrams when suitable.</li>
+        <li>Follow an explicit request for a different format when one is given.</li>
+      </ul>
+      <h2>Project scope</h2>
+      <h2>Feature workflow</h2>
+      <p>
+        Before implementing a new feature, describe its proposed scope and wait for the user's
+        agreement. Once that scope is approved, implement, test, and update the local running app.
+        Do not start a different feature without presenting it first.
+      </p>
+      <p>
+        This preference governs documentation deliverables. Application source, executable schemas
+        such as <code>prisma/schema.prisma</code>, and tool configuration keep their required file
+        formats. Existing documents and the application's PDF/Excel export features were not
+        migrated by this preference update.
+      </p>
+      <p>
+        This file records the preference within this repository. It does not change global assistant
+        settings.
+      </p>
+      <p>
+        <a href="reports/2026-09-08-saluni-checkpoint.html"
+          >Open the full project checkpoint report</a
+        >
+      </p>
+    </main>
+  </body>
+</html>

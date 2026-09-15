@@ -1,0 +1,79 @@
+name: saluni-test
+
+# Deployment serveur minimal de SALUNI.
+#
+# Preparation :
+#   Copy-Item .env.server.example .env.server        # PowerShell
+#   cp .env.server.example .env.server               # Linux/macOS
+#
+# Migration initiale / mise à jour :
+#   docker compose --env-file .env.server -f docker-compose.server.yml run --rm tooling npx prisma migrate deploy
+#
+# Construction et démarrage :
+#   docker compose --env-file .env.server -f docker-compose.server.yml up -d --build core-api
+
+services:
+  core-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    image: "saluni-core-api:${SALUNI_VERSION:-server}"
+    container_name: saluni-core-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      PORT: 3000
+      SUPABASE_PUBLIC_URL: "${NEXT_PUBLIC_SUPABASE_URL:?NEXT_PUBLIC_SUPABASE_URL is required}"
+      SUPABASE_ANON_KEY: "${NEXT_PUBLIC_SUPABASE_ANON_KEY:?NEXT_PUBLIC_SUPABASE_ANON_KEY is required}"
+      NEXT_PUBLIC_SUPABASE_URL: "${NEXT_PUBLIC_SUPABASE_URL:?NEXT_PUBLIC_SUPABASE_URL is required}"
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: "${NEXT_PUBLIC_SUPABASE_ANON_KEY:?NEXT_PUBLIC_SUPABASE_ANON_KEY is required}"
+      SUPABASE_SERVICE_ROLE_KEY: "${SUPABASE_SERVICE_ROLE_KEY:?SUPABASE_SERVICE_ROLE_KEY is required}"
+      AUTH_JWKS_URL: "${AUTH_JWKS_URL:?AUTH_JWKS_URL is required}"
+      DATABASE_URL: "${DATABASE_URL:?DATABASE_URL is required}"
+      ADMIN_DATABASE_URL: "${ADMIN_DATABASE_URL:?ADMIN_DATABASE_URL is required}"
+      DIRECT_URL: "${DIRECT_URL:?DIRECT_URL is required}"
+    ports:
+      - "${SALUNI_BIND_ADDRESS:-0.0.0.0}:${SALUNI_HTTP_PORT:-80}:3000"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          require('http').get('http://127.0.0.1:3000/',
+          r => process.exit(r.statusCode < 500 ? 0 : 1))
+          .on('error', () => process.exit(1))
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - saluni-internal
+
+  tooling:
+    profiles: ["tools"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    image: "saluni-tooling:${SALUNI_VERSION:-server}"
+    environment:
+      NEXT_PUBLIC_SUPABASE_URL: "${NEXT_PUBLIC_SUPABASE_URL:?NEXT_PUBLIC_SUPABASE_URL is required}"
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: "${NEXT_PUBLIC_SUPABASE_ANON_KEY:?NEXT_PUBLIC_SUPABASE_ANON_KEY is required}"
+      SUPABASE_PUBLIC_URL: "${NEXT_PUBLIC_SUPABASE_URL:?NEXT_PUBLIC_SUPABASE_URL is required}"
+      SUPABASE_ANON_KEY: "${NEXT_PUBLIC_SUPABASE_ANON_KEY:?NEXT_PUBLIC_SUPABASE_ANON_KEY is required}"
+      SUPABASE_SERVICE_ROLE_KEY: "${SUPABASE_SERVICE_ROLE_KEY:?SUPABASE_SERVICE_ROLE_KEY is required}"
+      AUTH_JWKS_URL: "${AUTH_JWKS_URL:?AUTH_JWKS_URL is required}"
+      DATABASE_URL: "${DATABASE_URL:?DATABASE_URL is required}"
+      ADMIN_DATABASE_URL: "${ADMIN_DATABASE_URL:?ADMIN_DATABASE_URL is required}"
+      DIRECT_URL: "${DIRECT_URL:?DIRECT_URL is required}"
+    networks:
+      - saluni-internal
+
+networks:
+  saluni-internal:
+    driver: bridge

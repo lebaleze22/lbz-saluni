@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="SALUNI product sales implementation, operation, validation, and local deployment report."
+    />
+    <title>SALUNI · Product sales delivery</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #173b2c;
+        --green: #1d6346;
+        --pale: #edf5ee;
+        --paper: #fff;
+        --ground: #f4f2e9;
+        --line: #d9ded6;
+        --amber: #8a5b12;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--ground);
+        color: var(--ink);
+        font:
+          16px/1.65 system-ui,
+          sans-serif;
+      }
+      main {
+        width: min(1040px, calc(100% - 32px));
+        margin: 32px auto 64px;
+      }
+      header,
+      section {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+      }
+      header {
+        padding: clamp(28px, 6vw, 58px);
+        color: white;
+        background: linear-gradient(135deg, #153d2d, #247052);
+      }
+      section {
+        margin-top: 20px;
+        padding: clamp(22px, 4vw, 36px);
+        background: var(--paper);
+      }
+      h1 {
+        margin: 8px 0 14px;
+        max-width: 760px;
+        font-size: clamp(2.2rem, 6vw, 4rem);
+        line-height: 1.05;
+      }
+      h2 {
+        margin-top: 0;
+        font-size: 1.45rem;
+      }
+      h3 {
+        margin-bottom: 6px;
+      }
+      .eyebrow {
+        margin: 0;
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+      }
+      .status {
+        display: inline-block;
+        margin-top: 16px;
+        padding: 8px 13px;
+        border-radius: 999px;
+        color: #143a2b;
+        background: #dcf5e5;
+        font-weight: 800;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        gap: 14px;
+      }
+      .card {
+        padding: 18px;
+        border: 1px solid var(--line);
+        border-radius: 13px;
+        background: #fbfcfa;
+      }
+      .metric {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 850;
+      }
+      ol,
+      ul {
+        padding-left: 1.35rem;
+      }
+      li + li {
+        margin-top: 8px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        padding: 12px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        background: var(--pale);
+      }
+      code {
+        overflow-wrap: anywhere;
+      }
+      a {
+        color: var(--green);
+        text-underline-offset: 3px;
+      }
+      .flow {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+      }
+      .flow span {
+        padding: 12px 15px;
+        border: 1px solid #bdd3c5;
+        border-radius: 10px;
+        background: var(--pale);
+        font-weight: 700;
+      }
+      .flow b {
+        color: var(--green);
+      }
+      .note {
+        border-left: 4px solid var(--amber);
+        padding: 14px 18px;
+        background: #fff8e8;
+      }
+      @media (max-width: 640px) {
+        main {
+          width: min(100% - 20px, 1040px);
+          margin-top: 10px;
+        }
+        table {
+          display: block;
+          overflow-x: auto;
+        }
+      }
+      @media print {
+        body {
+          background: white;
+        }
+        main {
+          width: 100%;
+          margin: 0;
+        }
+        section {
+          break-inside: avoid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">SALUNI · Approved feature delivery · 10 September 2026</p>
+        <h1>Product sales and stock-linked receipts</h1>
+        <p>
+          A complete point-of-sale flow for retail products, connected to inventory, client
+          dossiers, revenue reports, and exports.
+        </p>
+        <p class="status">Implemented, tested, migrated, and running locally</p>
+      </header>
+
+      <section>
+        <h2>What is available</h2>
+        <div class="grid">
+          <article class="card">
+            <h3>Sale entry</h3>
+            <p>Select a product and quantity, optionally link a client, then record the payment.</p>
+          </article>
+          <article class="card">
+            <h3>Automatic stock</h3>
+            <p>Every completed sale creates an audited stock movement and deducts the quantity.</p>
+          </article>
+          <article class="card">
+            <h3>Receipt</h3>
+            <p>
+              A permanent printable receipt records the product, price, payment, seller, and date.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Client history</h3>
+            <p>
+              Linked purchases appear in the client dossier with their receipt and product total.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Reports</h3>
+            <p>
+              Reports separate service revenue and product revenue while retaining total turnover.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Exports</h3>
+            <p>
+              Excel contains a Ventes produits worksheet; PDF includes product revenue and details.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section>
+        <h2>How to record a sale</h2>
+        <ol>
+          <li>Open <a href="http://localhost:54321/sales">Ventes de produits</a>.</li>
+          <li>Select a product. Only active products with stock and a sale price are offered.</li>
+          <li>Enter the quantity and optionally select the client dossier.</li>
+          <li>Choose Espèces, Orange Money, or MTN MoMo.</li>
+          <li>Confirm the sale, then print or retain the generated receipt.</li>
+        </ol>
+        <div class="flow" aria-label="Product sale transaction flow">
+          <span>Validate request</span><b>→</b><span>Lock product stock</span><b>→</b
+          ><span>Deduct quantity</span><b>→</b><span>Create movement</span><b>→</b
+          ><span>Create receipt</span>
+        </div>
+        <p>
+          These operations run inside one database transaction. If any step fails, the whole sale is
+          rolled back and stock remains unchanged.
+        </p>
+      </section>
+
+      <section>
+        <h2>Business and integrity rules</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Rule</th>
+              <th>Result</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Insufficient stock</td>
+              <td>The sale is rejected without a receipt or stock deduction.</td>
+            </tr>
+            <tr>
+              <td>Price changed after the form opened</td>
+              <td>The stale submission is rejected so the user can review the current price.</td>
+            </tr>
+            <tr>
+              <td>Repeated submission</td>
+              <td>
+                The same request identifier returns its existing receipt instead of selling twice.
+              </td>
+            </tr>
+            <tr>
+              <td>Two users request the last unit</td>
+              <td>Database locking allows only one sale to succeed.</td>
+            </tr>
+            <tr>
+              <td>Client from another salon</td>
+              <td>The tenant-scoped relationship is rejected.</td>
+            </tr>
+            <tr>
+              <td>Historical receipt</td>
+              <td>Runtime users can read and create receipts; update and delete are denied.</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="note">
+          Refunds and cancellations are outside this approved increment. A future refund feature
+          should use compensating records so the original receipt and audit trail remain intact.
+        </p>
+      </section>
+
+      <section>
+        <h2>Reporting behavior</h2>
+        <p>
+          Total turnover now combines service payments and product sales. The report also exposes
+          both values separately, groups product sales by product, and combines all supported
+          payment methods across the two revenue sources. Service staff and service-performance
+          metrics remain based on appointments.
+        </p>
+        <p>
+          The Excel export adds a dedicated <strong>Ventes produits</strong> worksheet. Each product
+          row preserves the receipt reference, date, optional client, quantity, unit price, total,
+          payment method, and seller. The PDF report includes the same revenue split and product
+          sale detail in a printable summary.
+        </p>
+      </section>
+
+      <section>
+        <h2>Verification evidence</h2>
+        <div class="grid">
+          <article class="card">
+            <p class="metric">70</p>
+            <p>unit tests passed</p>
+          </article>
+          <article class="card">
+            <p class="metric">23</p>
+            <p>PostgreSQL scenarios passed</p>
+          </article>
+          <article class="card">
+            <p class="metric">11</p>
+            <p>Auth and RLS checks passed</p>
+          </article>
+          <article class="card">
+            <p class="metric">26</p>
+            <p>authenticated HTTP checks passed</p>
+          </article>
+        </div>
+        <p>
+          Prisma formatting, client generation, schema validation, TypeScript validation, lint, and
+          the production Next.js build passed. The disposable PostgreSQL suite applied all 28
+          migrations from an empty database. Authenticated HTTP checks covered the sales list,
+          receipt, client dossier, reports, Excel and PDF exports, role guards, and prior client
+          import/export behavior.
+        </p>
+        <p>
+          The deployed owner account then passed read-only checks on <code>/sales</code>,
+          <code>/reports</code>, and <code>/inventory</code>. No demonstration sale was inserted
+          into the salon's operational database. Automated checks validate server rendering and
+          behavior; they are not a visual browser review.
+        </p>
+      </section>
+
+      <section>
+        <h2>Migration and local deployment</h2>
+        <p>
+          The additive migration <code>20260910100000_retail_sales</code> creates the immutable sale
+          ledger, tenant-scoped relationships, database checks, and row-level security policies. It
+          does not rewrite existing clients, products, appointments, payments, or stock movements.
+        </p>
+        <p>
+          Before migration, the local PostgreSQL database was backed up to
+          <code>docs/backups/saluni-before-retail-sales-20260910.dump</code>. The backup is excluded
+          from Git and Docker build context. Migration 28 then applied successfully, and the rebuilt
+          <code>core-api</code> and <code>nginx</code> containers started healthy at
+          <a href="http://localhost:54321">http://localhost:54321</a>.
+        </p>
+        <p>
+          Related guides: <a href="2026-09-08-clients-inventory.html">clients and inventory</a> ·
+          <a href="2026-09-09-client-import-dossier.html">client import and dossier</a> ·
+          <a href="2026-09-10-client-address-discovery.html">address and discovery sources</a> ·
+          <a href="../documentation-preferences.html">documentation workflow</a>
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

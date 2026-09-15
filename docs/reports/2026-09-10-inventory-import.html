@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="SALUNI inventory CSV and Excel import delivery and operating guide."
+    />
+    <title>SALUNI · Inventory file import</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #173b2c;
+        --green: #1d6346;
+        --pale: #edf5ee;
+        --paper: #fff;
+        --ground: #f4f2e9;
+        --line: #d9ded6;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--ground);
+        color: var(--ink);
+        font:
+          16px/1.65 system-ui,
+          sans-serif;
+      }
+      main {
+        width: min(1040px, calc(100% - 32px));
+        margin: 32px auto 64px;
+      }
+      header,
+      section {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+      }
+      header {
+        padding: clamp(28px, 6vw, 58px);
+        color: white;
+        background: linear-gradient(135deg, #153d2d, #247052);
+      }
+      section {
+        margin-top: 20px;
+        padding: clamp(22px, 4vw, 36px);
+        background: var(--paper);
+      }
+      h1 {
+        margin: 8px 0 14px;
+        font-size: clamp(2.2rem, 6vw, 4rem);
+        line-height: 1.05;
+      }
+      h2 {
+        margin-top: 0;
+      }
+      .eyebrow {
+        margin: 0;
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+      }
+      .status {
+        display: inline-block;
+        padding: 8px 13px;
+        border-radius: 999px;
+        color: #143a2b;
+        background: #dcf5e5;
+        font-weight: 800;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 14px;
+      }
+      .card {
+        padding: 18px;
+        border: 1px solid var(--line);
+        border-radius: 13px;
+        background: #fbfcfa;
+      }
+      .metric {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 850;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        padding: 12px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        background: var(--pale);
+      }
+      li + li {
+        margin-top: 8px;
+      }
+      a {
+        color: var(--green);
+        text-underline-offset: 3px;
+      }
+      code {
+        overflow-wrap: anywhere;
+      }
+      .rule {
+        padding: 16px 18px;
+        border-left: 4px solid var(--green);
+        background: var(--pale);
+      }
+      @media (max-width: 640px) {
+        main {
+          width: calc(100% - 20px);
+          margin-top: 10px;
+        }
+        table {
+          display: block;
+          overflow-x: auto;
+        }
+      }
+      @media print {
+        body {
+          background: white;
+        }
+        main {
+          width: 100%;
+          margin: 0;
+        }
+        section {
+          break-inside: avoid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">SALUNI · Approved feature delivery · 10 September 2026</p>
+        <h1>Inventory import from CSV and Excel</h1>
+        <p>
+          Bulk-create products, update the catalogue, and reconcile physical stock through the
+          existing audited inventory ledger.
+        </p>
+        <p class="status">Implemented, tested, backed up, and running locally</p>
+      </header>
+
+      <section>
+        <h2>How to use it</h2>
+        <ol>
+          <li>Open <a href="http://localhost:54321/inventory">Stock</a>.</li>
+          <li>Expand <strong>Importer le stock depuis CSV ou Excel</strong>.</li>
+          <li>Download the Excel or CSV template and retain all its column headings.</li>
+          <li>Fill at most 1,000 product rows, then select the completed file.</li>
+          <li>
+            Choose <strong>Vérifier le fichier</strong> to preview the result without writing data.
+          </li>
+          <li>Review created, updated, unchanged, and rejected counts.</li>
+          <li>Choose <strong>Confirmer l’import atomique</strong> to commit the complete file.</li>
+        </ol>
+        <p class="rule">
+          The stock value is the total physical quantity counted. It is not a quantity to add. An
+          existing balance of 10 with an imported physical stock of 7 creates an audited adjustment
+          of −3 and leaves the balance at 7.
+        </p>
+      </section>
+
+      <section>
+        <h2>Template columns</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Column</th>
+              <th>Rule</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>ID produit</td>
+              <td>Optional. Takes priority when updating an existing product.</td>
+            </tr>
+            <tr>
+              <td>SKU</td>
+              <td>
+                Matched case-insensitively and normalized to uppercase. Required for a new product.
+              </td>
+            </tr>
+            <tr>
+              <td>Nom</td>
+              <td>Required, up to 120 characters.</td>
+            </tr>
+            <tr>
+              <td>Unité</td>
+              <td>Use unité, ml, or g. Unit/piece and French labels are accepted.</td>
+            </tr>
+            <tr>
+              <td>Prix coût FCFA</td>
+              <td>Whole FCFA amount, zero or greater.</td>
+            </tr>
+            <tr>
+              <td>Prix vente FCFA</td>
+              <td>Whole FCFA amount, zero or greater.</td>
+            </tr>
+            <tr>
+              <td>Seuil stock bas</td>
+              <td>Non-negative quantity with at most three decimals.</td>
+            </tr>
+            <tr>
+              <td>Stock physique</td>
+              <td>Target physical balance, non-negative, with at most three decimals.</td>
+            </tr>
+            <tr>
+              <td>Statut</td>
+              <td>active/actif or archived/archivé. Archived products must have zero stock.</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Matching and audit behavior</h2>
+        <ul>
+          <li>A valid product ID matches only a product in the current salon.</li>
+          <li>Without an ID, a unique SKU updates the matching product.</li>
+          <li>Without a match, the SKU is required and a new product is created.</li>
+          <li>
+            Uploading the same SKU-based file again reports unchanged rows instead of duplicating
+            products.
+          </li>
+          <li>Initial quantities create stock receipt movements.</li>
+          <li>Changes to existing physical stock create counting-adjustment movements.</li>
+          <li>Stock movements remain append-only and preserve the responsible user and balance.</li>
+          <li>
+            A unit cannot change after inventory movements or service-consumption rules exist.
+          </li>
+          <li>A product linked to a service recipe cannot be archived by import.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>File and transaction safeguards</h2>
+        <p>
+          Supported formats are CSV, XLS, and XLSX, with a 2 MB limit, one worksheet, and at most
+          1,000 data rows. Unknown or repeated columns, formulas, invalid quantities, invalid money,
+          repeated target products, ambiguous SKUs, foreign IDs, and duplicated rows are rejected.
+        </p>
+        <p>
+          Parsing and database planning finish before mutation. The commit then locks targeted
+          products in a stable order and applies the complete file inside one tenant-scoped
+          transaction. Any failure rolls back product fields and stock movements together. Only
+          Owner and Director accounts can preview, import, or download templates.
+        </p>
+      </section>
+
+      <section>
+        <h2>Verification evidence</h2>
+        <div class="grid">
+          <article class="card">
+            <p class="metric">75</p>
+            <p>unit tests passed</p>
+          </article>
+          <article class="card">
+            <p class="metric">25</p>
+            <p>PostgreSQL scenarios passed</p>
+          </article>
+          <article class="card">
+            <p class="metric">11</p>
+            <p>Auth and RLS checks passed</p>
+          </article>
+          <article class="card">
+            <p class="metric">36</p>
+            <p>authenticated HTTP checks passed</p>
+          </article>
+        </div>
+        <p>
+          The production build passed TypeScript validation and lint. Automated checks covered CSV
+          and Excel parsing, formulas, duplicate and malformed rows, preview, create/update,
+          unchanged retry, initial and adjustment movements, invalid-file rollback, tenant
+          isolation, cross-origin rejection, templates, and role permissions.
+        </p>
+        <p>
+          After deployment, the real owner account passed read-only checks for the inventory import
+          panel and both template downloads. No stock record was imported or changed in the salon’s
+          operational database during deployment verification. These are server-rendering and HTTP
+          checks rather than visual browser inspection.
+        </p>
+      </section>
+
+      <section>
+        <h2>Local deployment</h2>
+        <p>
+          No schema migration was needed because the feature uses the existing product catalogue,
+          stock ledger, permissions, and row-level security. Before rollout, PostgreSQL was backed
+          up to <code>docs/backups/saluni-before-inventory-import-20260910.dump</code>. The backup
+          is excluded from Git and the Docker build context.
+        </p>
+        <p>
+          The production application image was rebuilt and the <code>core-api</code> and
+          <code>nginx</code> containers restarted healthy at
+          <a href="http://localhost:54321">http://localhost:54321</a>.
+        </p>
+        <p>
+          Related guides: <a href="2026-09-08-clients-inventory.html">clients and inventory</a> ·
+          <a href="2026-09-10-product-sales.html">product sales</a> ·
+          <a href="../documentation-preferences.html">documentation workflow</a>
+        </p>
+      </section>
+    </main>
+  </body>
+</html>
