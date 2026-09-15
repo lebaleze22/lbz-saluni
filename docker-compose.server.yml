@@ -1,99 +1,174 @@
-name: saluni-test
+name: saluni-server
 
-# Deployment serveur minimal de SALUNI.
-#
-# Preparation :
-#   Copy-Item .env.server.example .env.server        # PowerShell
-#   cp .env.server.example .env.server               # Linux/macOS
-#
-# Migration initiale / mise à jour :
-#   docker compose --env-file .env.server -f docker-compose.server.yml run --rm tooling npx prisma migrate deploy
-#
-# Construction et démarrage public :
-#   docker compose --env-file .env.server -f docker-compose.server.yml up -d --build core-api cloudflared
-#
-# Adresse HTTPS publique générée :
-#   docker compose --env-file .env.server -f docker-compose.server.yml logs cloudflared
+# Stack publique autonome pour une machine Windows avec Docker Desktop.
+# L'installation et la génération des secrets sont pilotées par :
+#   powershell -ExecutionPolicy Bypass -File scripts/server/install-windows.ps1
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: saluni-server-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${LOCAL_POSTGRES_PASSWORD:?LOCAL_POSTGRES_PASSWORD is required}
+      POSTGRES_DB: postgres
+    volumes:
+      - saluni-server-postgres-data:/var/lib/postgresql/data
+      - ./docker/local/postgres-init:/docker-entrypoint-initdb.d:ro
+    expose:
+      - "5432"
+    networks:
+      - saluni-server
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  gotrue:
+    image: supabase/gotrue:v2.170.0
+    container_name: saluni-server-gotrue
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: "9999"
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgresql://postgres:${LOCAL_POSTGRES_PASSWORD}@postgres:5432/postgres?options=-c%20search_path=auth
+      API_EXTERNAL_URL: ${SALUNI_LOCAL_URL:-http://localhost:8080}/auth/v1
+      GOTRUE_SITE_URL: ${SALUNI_LOCAL_URL:-http://localhost:8080}
+      GOTRUE_URI_ALLOW_LIST: "*"
+      GOTRUE_DISABLE_SIGNUP: "true"
+      GOTRUE_JWT_SECRET: ${GOTRUE_JWT_SECRET:?GOTRUE_JWT_SECRET is required}
+      GOTRUE_JWT_EXP: "3600"
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_MAILER_AUTOCONFIRM: "true"
+      GOTRUE_LOG_LEVEL: info
+    expose:
+      - "9999"
+    networks:
+      - saluni-server
   core-api:
     build:
       context: .
       dockerfile: Dockerfile
       target: runner
-    image: "saluni-core-api:${SALUNI_VERSION:-server}"
-    container_name: saluni-core-api
+    image: saluni-core-api:${SALUNI_VERSION:-server}
+    container_name: saluni-server-core-api
     restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      gotrue:
+        condition: service_started
     environment:
       NODE_ENV: production
       HOSTNAME: 0.0.0.0
       PORT: 3000
-      SUPABASE_PUBLIC_URL: "${NEXT_PUBLIC_SUPABASE_URL:?NEXT_PUBLIC_SUPABASE_URL is required}"
-      SUPABASE_ANON_KEY: "${NEXT_PUBLIC_SUPABASE_ANON_KEY:?NEXT_PUBLIC_SUPABASE_ANON_KEY is required}"
-      NEXT_PUBLIC_SUPABASE_URL: "${NEXT_PUBLIC_SUPABASE_URL:?NEXT_PUBLIC_SUPABASE_URL is required}"
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: "${NEXT_PUBLIC_SUPABASE_ANON_KEY:?NEXT_PUBLIC_SUPABASE_ANON_KEY is required}"
-      SUPABASE_SERVICE_ROLE_KEY: "${SUPABASE_SERVICE_ROLE_KEY:?SUPABASE_SERVICE_ROLE_KEY is required}"
-      AUTH_JWKS_URL: "${AUTH_JWKS_URL:?AUTH_JWKS_URL is required}"
-      DATABASE_URL: "${DATABASE_URL:?DATABASE_URL is required}"
-      ADMIN_DATABASE_URL: "${ADMIN_DATABASE_URL:?ADMIN_DATABASE_URL is required}"
-      DIRECT_URL: "${DIRECT_URL:?DIRECT_URL is required}"
-    ports:
-      - "${SALUNI_BIND_ADDRESS:-0.0.0.0}:${SALUNI_HTTP_PORT:-80}:3000"
+      SUPABASE_PUBLIC_URL: ""
+      NEXT_PUBLIC_SUPABASE_URL: ""
+      SUPABASE_INTERNAL_URL: http://nginx
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:?SUPABASE_ANON_KEY is required}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:?SUPABASE_ANON_KEY is required}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:?SUPABASE_SERVICE_ROLE_KEY is required}
+      AUTH_JWT_SECRET: ${GOTRUE_JWT_SECRET:?GOTRUE_JWT_SECRET is required}
+      DATABASE_URL: postgresql://app_runtime:${LOCAL_APP_RUNTIME_PASSWORD}@postgres:5432/postgres
+      ADMIN_DATABASE_URL: postgresql://postgres:${LOCAL_POSTGRES_PASSWORD}@postgres:5432/postgres
+      DIRECT_URL: postgresql://postgres:${LOCAL_POSTGRES_PASSWORD}@postgres:5432/postgres
+      NODE_OPTIONS: --max-http-header-size=32768
+    expose:
+      - "3000"
+    networks:
+      - saluni-server
     healthcheck:
       test:
-        - CMD
-        - node
-        - -e
-        - >-
-          require('http').get('http://127.0.0.1:3000/',
-          r => process.exit(r.statusCode < 500 ? 0 : 1))
-          .on('error', () => process.exit(1))
-      interval: 30s
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://127.0.0.1:3000/login', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))",
+        ]
+      interval: 15s
       timeout: 5s
       start_period: 20s
-      retries: 3
+      retries: 20
     security_opt:
       - no-new-privileges:true
-    networks:
-      - saluni-internal
 
   tooling:
-    profiles: ["tools"]
+    profiles: ["tooling"]
     build:
       context: .
       dockerfile: Dockerfile
       target: builder
-    image: "saluni-tooling:${SALUNI_VERSION:-server}"
+    image: saluni-tooling:${SALUNI_VERSION:-server}
+    container_name: saluni-server-tooling
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
-      NEXT_PUBLIC_SUPABASE_URL: "${NEXT_PUBLIC_SUPABASE_URL:?NEXT_PUBLIC_SUPABASE_URL is required}"
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: "${NEXT_PUBLIC_SUPABASE_ANON_KEY:?NEXT_PUBLIC_SUPABASE_ANON_KEY is required}"
-      SUPABASE_PUBLIC_URL: "${NEXT_PUBLIC_SUPABASE_URL:?NEXT_PUBLIC_SUPABASE_URL is required}"
-      SUPABASE_ANON_KEY: "${NEXT_PUBLIC_SUPABASE_ANON_KEY:?NEXT_PUBLIC_SUPABASE_ANON_KEY is required}"
-      SUPABASE_SERVICE_ROLE_KEY: "${SUPABASE_SERVICE_ROLE_KEY:?SUPABASE_SERVICE_ROLE_KEY is required}"
-      AUTH_JWKS_URL: "${AUTH_JWKS_URL:?AUTH_JWKS_URL is required}"
-      DATABASE_URL: "${DATABASE_URL:?DATABASE_URL is required}"
-      ADMIN_DATABASE_URL: "${ADMIN_DATABASE_URL:?ADMIN_DATABASE_URL is required}"
-      DIRECT_URL: "${DIRECT_URL:?DIRECT_URL is required}"
+      LOCAL_APP_RUNTIME_PASSWORD: ${LOCAL_APP_RUNTIME_PASSWORD:?LOCAL_APP_RUNTIME_PASSWORD is required}
+      SUPABASE_PUBLIC_URL: http://nginx
+      SUPABASE_INTERNAL_URL: http://nginx
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:?SUPABASE_ANON_KEY is required}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:?SUPABASE_ANON_KEY is required}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:?SUPABASE_SERVICE_ROLE_KEY is required}
+      AUTH_JWT_SECRET: ${GOTRUE_JWT_SECRET:?GOTRUE_JWT_SECRET is required}
+      DATABASE_URL: postgresql://app_runtime:${LOCAL_APP_RUNTIME_PASSWORD}@postgres:5432/postgres
+      ADMIN_DATABASE_URL: postgresql://postgres:${LOCAL_POSTGRES_PASSWORD}@postgres:5432/postgres
+      DIRECT_URL: postgresql://postgres:${LOCAL_POSTGRES_PASSWORD}@postgres:5432/postgres
     networks:
-      - saluni-internal
+      - saluni-server
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: saluni-server-nginx
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${SALUNI_HTTP_PORT:-8080}:80"
+    volumes:
+      - ./nginx/local.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      core-api:
+        condition: service_healthy
+      gotrue:
+        condition: service_started
+    networks:
+      - saluni-server
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/login || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    security_opt:
+      - no-new-privileges:true
 
   cloudflared:
     image: cloudflare/cloudflared@sha256:b269e8abd07a5bf6f3f4be65d5050b2174eca89c56a0241a8ff32a16aec454e4
-    container_name: saluni-cloudflared
+    container_name: saluni-server-cloudflared
     restart: unless-stopped
     command:
       - tunnel
       - --no-autoupdate
       - --url
-      - http://core-api:3000
+      - http://nginx:80
     depends_on:
-      core-api:
+      nginx:
         condition: service_healthy
+    networks:
+      - saluni-server
     security_opt:
       - no-new-privileges:true
-    networks:
-      - saluni-internal
 
 networks:
-  saluni-internal:
+  saluni-server:
+    name: saluni-server
     driver: bridge
+
+volumes:
+  saluni-server-postgres-data:
+    name: saluni-server-postgres-data

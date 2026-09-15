@@ -9,7 +9,7 @@ declare global {
 
 export function createClient() {
   const runtimeConfig = window.__SALUNI_PUBLIC_AUTH__;
-  const url = runtimeConfig?.url || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const url = runtimeConfig?.url || process.env.NEXT_PUBLIC_SUPABASE_URL || window.location.origin;
   const anonKey = runtimeConfig?.anonKey || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!url || !anonKey) {
