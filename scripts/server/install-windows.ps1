@@ -42,11 +42,26 @@ function New-AuthToken([string]$Role, [string]$Secret) {
   return "$unsigned.$signature"
 }
 
-function Invoke-SaluniCompose {
-  & docker compose --env-file $EnvironmentFile -f $ComposeFile @args
-  if ($LASTEXITCODE -ne 0) {
-    throw "docker compose failed with exit code $LASTEXITCODE."
+function Invoke-DockerCommand {
+  $previousErrorActionPreference = $ErrorActionPreference
+  try {
+    # Windows PowerShell represents native stderr output as an ErrorRecord. Docker Desktop can
+    # write harmless warnings there even when the command succeeds, so judge native commands by
+    # their exit code while retaining strict error handling for the rest of the installer.
+    $ErrorActionPreference = "Continue"
+    & docker @args
+    $exitCode = $LASTEXITCODE
+  } finally {
+    $ErrorActionPreference = $previousErrorActionPreference
   }
+  if ($exitCode -ne 0) {
+    throw "docker failed with exit code $exitCode."
+  }
+}
+
+function Invoke-SaluniCompose {
+  $composeArguments = @("compose", "--env-file", $EnvironmentFile, "-f", $ComposeFile) + $args
+  Invoke-DockerCommand @composeArguments
 }
 
 function ConvertFrom-SecureValue([Security.SecureString]$Value) {
@@ -61,8 +76,9 @@ function ConvertFrom-SecureValue([Security.SecureString]$Value) {
 if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
   throw "Docker is not installed. Install and start Docker Desktop first."
 }
-& docker info *> $null
-if ($LASTEXITCODE -ne 0) {
+try {
+  Invoke-DockerCommand info *> $null
+} catch {
   throw "Docker Desktop is not running."
 }
 
@@ -101,7 +117,7 @@ Invoke-SaluniCompose up -d core-api nginx cloudflared
 
 $publicUrl = $null
 for ($attempt = 0; $attempt -lt 60 -and -not $publicUrl; $attempt++) {
-  $tunnelLogs = (& docker compose --env-file $EnvironmentFile -f $ComposeFile logs --no-color cloudflared 2>&1) |
+  $tunnelLogs = (Invoke-DockerCommand compose --env-file $EnvironmentFile -f $ComposeFile logs --no-color cloudflared 2>&1) |
     Out-String
   $urls = [regex]::Matches($tunnelLogs, 'https://[a-z0-9-]+\.trycloudflare\.com')
   if ($urls.Count -gt 0) {
